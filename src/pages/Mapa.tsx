@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { MapView } from '../components/map/MapView'
+import { LazyMapView as MapView } from '../components/map/LazyMapView'
 import { SpeedControl } from '../components/map/SpeedControl'
 import { pl } from '../i18n/pl'
 import { allTrucks, useFleetStore } from '../store/fleet'

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Navigate, useParams } from 'react-router'
-import { MapView } from '../components/map/MapView'
+import { LazyMapView as MapView } from '../components/map/LazyMapView'
 import { Card } from '../components/ui/Card'
 import { StatRow } from '../components/ui/StatRow'
 import { StatusBadge } from '../components/ui/StatusBadge'

@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router'
-import { MapView } from '../components/map/MapView'
+import { LazyMapView as MapView } from '../components/map/LazyMapView'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { Slider } from '../components/ui/Slider'
