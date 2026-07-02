@@ -1,0 +1,25 @@
+@import '@fontsource-variable/inter';
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Brand palette — референс мокапа: синяя шапка, зелёные CTA, светлый фон */
+  --color-brand: #1e40af;
+  --color-brand-strong: #1c3a9e;
+  --color-brand-soft: #e8edfb;
+  --color-cta: #16a34a;
+  --color-cta-strong: #15803d;
+  --color-canvas: #f1f5f9;
+  --color-surface: #ffffff;
+  --color-ink: #0f172a;
+  --color-ink-muted: #64748b;
+  --color-line: #e2e8f0;
+
+  --radius-card: 1.25rem;
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.06), 0 8px 24px -12px rgb(15 23 42 / 0.12);
+}
+
+body {
+  @apply bg-canvas font-sans text-ink antialiased;
+}
