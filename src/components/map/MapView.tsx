@@ -24,10 +24,12 @@ export interface MapViewProps {
   getTrucks: () => Truck[]
   /** Ключ, меняющийся при смене состава флота — пересоздаёт движок. */
   fleetKey?: string | number
+  /** Интерактив (drag/zoom + nav-контрол). false — мини-карта покрытия в визарде. */
+  interactive?: boolean
 }
 
 /** Full-bleed карта Европы: один GeoJSON source + symbol-слой, обновление через setData. */
-export function MapView({ getTrucks, fleetKey }: MapViewProps) {
+export function MapView({ getTrucks, fleetKey, interactive = true }: MapViewProps) {
   const container = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -38,8 +40,11 @@ export function MapView({ getTrucks, fleetKey }: MapViewProps) {
       bounds: EUROPE_BOUNDS,
       fitBoundsOptions: { padding: 24 },
       attributionControl: { compact: true },
+      interactive,
     })
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
+    if (interactive) {
+      map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
+    }
 
     let engine: ReturnType<typeof createSimEngine> | null = null
 
@@ -116,7 +121,7 @@ export function MapView({ getTrucks, fleetKey }: MapViewProps) {
     }
     // fleetKey пересоздаёт карту при смене состава флота
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fleetKey])
+  }, [fleetKey, interactive])
 
   return <div ref={container} className="size-full" data-testid="map" />
 }

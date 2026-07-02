@@ -23,3 +23,40 @@
 body {
   @apply bg-canvas font-sans text-ink antialiased;
 }
+
+/* Тактильный слайдер визарда: залитый трек через inline-gradient, крупный thumb. */
+.adt-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 9999px;
+  outline: none;
+  cursor: pointer;
+}
+.adt-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 9999px;
+  background: #fff;
+  border: 2px solid var(--color-brand);
+  box-shadow: 0 2px 8px rgb(15 23 42 / 0.2);
+  transition: transform 0.12s ease;
+}
+.adt-range::-webkit-slider-thumb:active {
+  transform: scale(1.18);
+}
+.adt-range::-moz-range-thumb {
+  width: 26px;
+  height: 26px;
+  border-radius: 9999px;
+  background: #fff;
+  border: 2px solid var(--color-brand);
+  box-shadow: 0 2px 8px rgb(15 23 42 / 0.2);
+}
+.adt-range:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
