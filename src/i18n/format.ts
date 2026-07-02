@@ -32,6 +32,14 @@ export function formatMlnRange(min: number, max: number): string {
   return `${plOneDecimal.format(min / 1_000_000)}–${plOneDecimal.format(max / 1_000_000)} mln`
 }
 
+const plDate = new Intl.DateTimeFormat('pl-PL', { day: 'numeric', month: 'short', year: 'numeric' })
+
+/** '2026-05-01' → «1 maj 2026». Вход — ISO YYYY-MM-DD (парсится в UTC). */
+export function formatDate(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  return plDate.format(new Date(Date.UTC(y, m - 1, d)))
+}
+
 export interface PluralForms {
   /** 1 naczepa */
   one: string

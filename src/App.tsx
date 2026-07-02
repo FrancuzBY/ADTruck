@@ -1,7 +1,9 @@
 import { Navigate, Route, Routes } from 'react-router'
 import { AppShell } from './components/AppShell'
 import { Flota } from './pages/Flota'
+import { FlotaDodaj } from './pages/FlotaDodaj'
 import { Kampanie } from './pages/Kampanie'
+import { KampaniaDetail } from './pages/KampaniaDetail'
 import { Landing } from './pages/Landing'
 import { Mapa } from './pages/Mapa'
 import { Profil } from './pages/Profil'
@@ -19,7 +21,9 @@ function App() {
         <Route path="zamow/potwierdzenie" element={<ZamowPotwierdzenie />} />
         <Route path="mapa" element={<Mapa />} />
         <Route path="kampanie" element={<Kampanie />} />
+        <Route path="kampanie/:id" element={<KampaniaDetail />} />
         <Route path="flota" element={<Flota />} />
+        <Route path="flota/dodaj" element={<FlotaDodaj />} />
         <Route path="profil" element={<Profil />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
