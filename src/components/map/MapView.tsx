@@ -11,6 +11,7 @@ import { ARROW_COLORS, EUROPE_BOUNDS, IS_E2E, makeArrowIcon, mapStyle, type MapT
 const SOURCE_ID = 'trucks'
 const SEL_ID = 'sel'
 const HEAT_ID = 'heat'
+const COLS_ID = 'cols'
 const ARROW_DRIVING = 'truck-arrow'
 const ARROW_PARKED = 'truck-arrow-parked'
 const EMPTY_FC: TruckFeatureCollection = { type: 'FeatureCollection', features: [] }
@@ -33,19 +34,31 @@ export interface MapViewProps {
   heatmap?: GeoJSON.FeatureCollection
   /** Показывать тепловую карту. */
   showHeatmap?: boolean
+  /** Полигоны-колонны городов для 3D-режима. */
+  columns?: GeoJSON.FeatureCollection
+  /** 3D-режим: наклон + объёмные колонны охвата. */
+  show3d?: boolean
+  /** Отдаёт готовый maplibre.Map наружу (для кино-автотура). */
+  onMapReady?: (map: maplibregl.Map) => void
 }
 
 /** Full-bleed карта Европы: symbol-слой флота + heatmap охвата + подсветка выбранного маршрута. */
-export function MapView({ getTrucks, fleetKey, interactive = true, theme = 'dark', onSelectTruck, heatmap, showHeatmap }: MapViewProps) {
+export function MapView({ getTrucks, fleetKey, interactive = true, theme = 'dark', onSelectTruck, heatmap, showHeatmap, columns, show3d, onMapReady }: MapViewProps) {
   const container = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const loadedRef = useRef(false)
   const onSelectRef = useRef(onSelectTruck)
   const heatRef = useRef(heatmap)
   const showHeatRef = useRef(showHeatmap)
+  const colsRef = useRef(columns)
+  const show3dRef = useRef(show3d)
+  const onReadyRef = useRef(onMapReady)
   onSelectRef.current = onSelectTruck
   heatRef.current = heatmap
   showHeatRef.current = showHeatmap
+  colsRef.current = columns
+  show3dRef.current = show3d
+  onReadyRef.current = onMapReady
 
   useEffect(() => {
     if (!container.current) return
@@ -127,6 +140,22 @@ export function MapView({ getTrucks, fleetKey, interactive = true, theme = 'dark
         },
       })
 
+      // 3D-колонны охвата (fill-extrusion) — под фурами.
+      map.addSource(COLS_ID, { type: 'geojson', data: colsRef.current ?? EMPTY_GEO })
+      map.addLayer({
+        id: COLS_ID,
+        type: 'fill-extrusion',
+        source: COLS_ID,
+        layout: { visibility: show3dRef.current ? 'visible' : 'none' },
+        paint: {
+          'fill-extrusion-height': ['get', 'height'],
+          'fill-extrusion-base': 0,
+          'fill-extrusion-opacity': 0.85,
+          'fill-extrusion-color': ['interpolate', ['linear'], ['get', 'weight'],
+            0, '#155e75', 0.4, '#22d3ee', 0.7, '#a3e635', 1, '#f59e0b'],
+        },
+      })
+
       // Подсветка выбранного маршрута — над heatmap, под фурами.
       map.addSource(SEL_ID, { type: 'geojson', data: EMPTY_GEO })
       map.addLayer({ id: 'sel-rem', type: 'line', source: SEL_ID, filter: ['==', ['get', 'seg'], 'rem'], layout: { 'line-cap': 'round' }, paint: { 'line-color': '#22d3ee', 'line-width': 2.5, 'line-dasharray': [1.5, 1.5], 'line-opacity': 0.85 } })
@@ -162,6 +191,7 @@ export function MapView({ getTrucks, fleetKey, interactive = true, theme = 'dark
       engine = createSimEngine(getTrucks, setData)
       engine.start()
       loadedRef.current = true
+      onReadyRef.current?.(map)
     })
 
     return () => {
@@ -186,6 +216,21 @@ export function MapView({ getTrucks, fleetKey, interactive = true, theme = 'dark
     if (!map || !loadedRef.current || !map.getLayer(HEAT_ID)) return
     map.setLayoutProperty(HEAT_ID, 'visibility', showHeatmap ? 'visible' : 'none')
   }, [showHeatmap])
+
+  // Данные 3D-колонн.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !loadedRef.current) return
+    ;(map.getSource(COLS_ID) as maplibregl.GeoJSONSource | undefined)?.setData(columns ?? EMPTY_GEO)
+  }, [columns])
+
+  // 3D-режим: наклон карты + видимость колонн.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !loadedRef.current || !map.getLayer(COLS_ID)) return
+    map.setLayoutProperty(COLS_ID, 'visibility', show3d ? 'visible' : 'none')
+    map.easeTo({ pitch: show3d ? 55 : 0, bearing: show3d ? -18 : 0, duration: 800 })
+  }, [show3d])
 
   return <div ref={container} className="size-full" data-testid="map" />
 }

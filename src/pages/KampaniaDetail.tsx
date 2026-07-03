@@ -1,5 +1,5 @@
 import { AnimatePresence } from 'framer-motion'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useParams } from 'react-router'
 import { TruckDetailSheet } from '../components/TruckDetailSheet'
 import { LazyMapView as MapView } from '../components/map/LazyMapView'
@@ -52,7 +52,10 @@ export function KampaniaDetail() {
   const userTrucks = useFleetStore((s) => s.userTrucks)
   const [selected, setSelected] = useState<Truck | null>(null)
   const [showHeat, setShowHeat] = useState(false)
+  const [scrub, setScrub] = useState<number | null>(null)
+  const playRef = useRef<number | null>(null)
   useTick(1000)
+  useEffect(() => () => { if (playRef.current) cancelAnimationFrame(playRef.current) }, [])
 
   const trucks = useMemo(() => allTrucks(userTrucks), [userTrucks])
   const campaignTrucks = useMemo(
@@ -63,7 +66,8 @@ export function KampaniaDetail() {
   const heatmap = useMemo(() => reachHeatFeatures(campaignTrucks), [campaignTrucks])
 
   const now = simNow()
-  const report = campaign ? campaignReport(campaign, trucks, now) : null
+  const tEff = scrub ?? now
+  const report = campaign ? campaignReport(campaign, trucks, tEff) : null
   const km = Math.round(useCountUp(report?.km ?? 0))
   const imp = Math.round(useCountUp(report?.impressions ?? 0))
 
@@ -74,7 +78,23 @@ export function KampaniaDetail() {
   const spentPln = Math.round(total * report.progress)
   const perTruckMoney = Math.round(total / Math.max(campaign.trucks, 1))
   const startMs = parseISODate(campaign.startDate).getTime()
-  const untilMs = Math.min(now, parseISODate(campaign.endDate).getTime() + DAY_MS)
+  const endLive = Math.min(now, parseISODate(campaign.endDate).getTime() + DAY_MS)
+  const untilMs = Math.min(tEff, parseISODate(campaign.endDate).getTime() + DAY_MS)
+
+  const play = () => {
+    if (playRef.current) return
+    const from = startMs
+    const to = endLive
+    const t0 = performance.now()
+    const tick = () => {
+      const p = Math.min((performance.now() - t0) / 8000, 1)
+      setScrub(from + (to - from) * p)
+      if (p < 1) playRef.current = requestAnimationFrame(tick)
+      else { playRef.current = null; setScrub(null) }
+    }
+    playRef.current = requestAnimationFrame(tick)
+  }
+  const scrubPct = endLive > startMs ? ((tEff - startMs) / (endLive - startMs)) * 100 : 0
 
   const perTruck = campaignTrucks
     .map((t) => {
@@ -85,8 +105,23 @@ export function KampaniaDetail() {
     })
     .sort((a, b) => b.km - a.km)
 
-  const feed = campaignFeed(campaignTrucks, report.impressions, now)
+  const feed = campaignFeed(campaignTrucks, report.impressions, tEff)
   const maxTrucks = Math.max(...report.countryStats.map((s) => s.trucks), 1)
+
+  // Разбивка аудитории: город vs трасса, топ-города, охват.
+  const cityCount = new Map<string, number>()
+  let uSum = 0
+  let uN = 0
+  for (const t of campaignTrucks) {
+    const r = routeById(t.routeId)
+    if (!r) continue
+    uSum += r.urbanShare
+    uN++
+    for (const c of r.cities) cityCount.set(c, (cityCount.get(c) ?? 0) + 1)
+  }
+  const u = uN ? uSum / uN : 0.25
+  const urbanPct = Math.round(((9 * u) / (9 * u + 3 * (1 - u))) * 100)
+  const topCities = [...cityCount.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)
 
   return (
     <div className="min-h-full bg-canvas px-[18px] pb-4">
@@ -107,6 +142,43 @@ export function KampaniaDetail() {
           <p className="mt-2 text-[12.5px] text-ink-muted">
             Postęp kampanii: <b className="text-ink">{Math.round(report.progress * 100)}%</b>
           </p>
+        </div>
+
+        {/* Перемотка кампании: прокрутить всю кампанию за секунды */}
+        <div className="rounded-[20px] border border-line bg-surface p-[18px]">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[13px] font-semibold text-ink-muted">Przewiń kampanię</h2>
+            <span className="font-mono text-[12px] text-ink">
+              {formatDate(new Date(tEff).toISOString().slice(0, 10))}
+              {scrub === null && <span className="text-live"> · na żywo</span>}
+            </span>
+          </div>
+          <div className="mt-3 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={play}
+              aria-label="Odtwórz przebieg kampanii"
+              className="grid size-9 shrink-0 place-items-center rounded-full bg-cta text-white shadow-[0_8px_20px_-8px_rgb(22_163_74_/_0.6)]"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" className="size-4"><path d="M8 5v14l11-7z" /></svg>
+            </button>
+            <input
+              type="range"
+              className="adt-range flex-1"
+              min={startMs}
+              max={endLive}
+              step={DAY_MS}
+              value={tEff}
+              onChange={(e) => setScrub(Number(e.target.value))}
+              style={{ background: `linear-gradient(to right, var(--color-brand) ${scrubPct}%, var(--color-line) ${scrubPct}%)` }}
+              aria-label="Oś czasu kampanii"
+            />
+            {scrub !== null && (
+              <button type="button" onClick={() => setScrub(null)} className="shrink-0 rounded-full border border-line px-2.5 py-1 text-[11px] font-semibold text-ink-muted">
+                na żywo
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Puls kampanii: показы в реальном времени + живая лента */}
@@ -171,6 +243,42 @@ export function KampaniaDetail() {
             </div>
           </div>
         )}
+
+        {/* Структура аудитории: город vs трасса, топ-города, охват */}
+        <div className="rounded-[20px] border border-line bg-surface p-[18px]">
+          <h2 className="text-[13px] font-semibold text-ink-muted">Struktura zasięgu</h2>
+          <div className="mt-3">
+            <div className="flex justify-between text-[11.5px]">
+              <span className="text-neon">Miasto {urbanPct}%</span>
+              <span className="text-ink-muted">Trasa {100 - urbanPct}%</span>
+            </div>
+            <div className="mt-1 flex h-2 overflow-hidden rounded-full bg-brand-soft">
+              <div className="bg-neon" style={{ width: `${urbanPct}%` }} />
+            </div>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div>
+              <div className="font-mono text-xl font-semibold text-ink">{report.countries.length}</div>
+              <div className="text-[11.5px] text-ink-muted">krajów</div>
+            </div>
+            <div>
+              <div className="font-mono text-xl font-semibold text-ink">{cityCount.size}</div>
+              <div className="text-[11.5px] text-ink-muted">miast na trasach</div>
+            </div>
+          </div>
+          {topCities.length > 0 && (
+            <div className="mt-3 border-t border-line pt-3">
+              <div className="text-[11px] tracking-wide text-ink-faint uppercase">Najczęstsze miasta</div>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {topCities.map(([name, c]) => (
+                  <span key={name} className="rounded-full border border-line bg-surface-2 px-2.5 py-1 text-[11.5px] text-ink">
+                    {name} <span className="text-ink-faint">·{c}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Разбивка по машинам — тап открывает карточку с рекламой */}
         <div className="rounded-[20px] border border-line bg-surface p-[18px]">

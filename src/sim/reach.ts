@@ -86,6 +86,35 @@ export function reachHeatFeatures(trucks: Truck[], nowMs?: number): GeoJSON.Feat
   return { type: 'FeatureCollection', features }
 }
 
+/** Полигоны-«колонны охвата» над городами для 3D fill-extrusion (высота ∝ показам). */
+export function cityColumnFeatures(trucks: Truck[]): GeoJSON.FeatureCollection {
+  const cityCount = new Map<string, number>()
+  for (const t of trucks) {
+    const route = routeById(t.routeId)
+    if (!route) continue
+    for (const name of route.cities) cityCount.set(ALIAS[name] ?? name, (cityCount.get(ALIAS[name] ?? name) ?? 0) + 1)
+  }
+  const maxCity = Math.max(1, ...cityCount.values())
+  const features: GeoJSON.Feature[] = []
+  for (const [name, count] of cityCount) {
+    const c = cityByName.get(name)
+    if (!c) continue
+    const weight = 0.5 * (count / maxCity) + 0.5 * (pop(name) / MAX_POP)
+    const d = 0.11
+    features.push({
+      type: 'Feature',
+      properties: { name, weight, height: 20000 + weight * 320000 },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [[
+          [c.lng - d, c.lat - d], [c.lng + d, c.lat - d], [c.lng + d, c.lat + d], [c.lng - d, c.lat + d], [c.lng - d, c.lat - d],
+        ]],
+      },
+    })
+  }
+  return { type: 'FeatureCollection', features }
+}
+
 // Лёгкая геометрия для сэмплинга (свой кэш по polyline).
 interface Cum { points: LngLat[]; cum: number[]; total: number }
 const cumCache = new Map<string, Cum>()
