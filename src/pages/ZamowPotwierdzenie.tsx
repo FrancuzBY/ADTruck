@@ -59,12 +59,12 @@ export function ZamowPotwierdzenie() {
       : `${est.days} ${plPlural(est.days, dayForms)}`
 
   return (
-    <div className="relative overflow-hidden px-[22px] pt-16 pb-4">
+    <div className="relative overflow-hidden px-[22px] pt-6 pb-4">
       {/* Атмосферное свечение */}
       <div aria-hidden className="pointer-events-none absolute inset-x-0 -top-16 mx-auto h-72 w-72 rounded-full bg-cta/20 blur-[90px]" />
 
       {/* Галочка успеха + рябь + салют */}
-      <div className="relative mx-auto grid size-[92px] place-items-center">
+      <div className="relative mx-auto grid size-[80px] place-items-center">
         {[0, 1].map((i) => (
           <motion.span
             key={i}
@@ -89,9 +89,9 @@ export function ZamowPotwierdzenie() {
           initial={{ scale: 0.4, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: 'spring', stiffness: 260, damping: 18 }}
-          className="grid size-[92px] place-items-center rounded-full bg-cta shadow-[0_18px_44px_-12px_rgb(22_163_74_/_0.6)]"
+          className="grid size-[80px] place-items-center rounded-full bg-cta shadow-[0_18px_44px_-12px_rgb(22_163_74_/_0.6)]"
         >
-          <svg viewBox="0 0 52 52" className="size-[52px]" fill="none">
+          <svg viewBox="0 0 52 52" className="size-[46px]" fill="none">
             <motion.path
               d="M13 27l9 9 17-20"
               stroke="#fff"
@@ -110,7 +110,7 @@ export function ZamowPotwierdzenie() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.35 }}
-        className="mt-6 text-center font-display text-[29px] font-extrabold tracking-tight text-ink"
+        className="mt-4 text-center font-display text-[29px] font-extrabold tracking-tight text-ink"
       >
         Kampania utworzona!
       </motion.h1>
@@ -128,7 +128,7 @@ export function ZamowPotwierdzenie() {
         initial={{ opacity: 0, y: 16, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ delay: 0.55, type: 'spring', stiffness: 220, damping: 24 }}
-        className="relative mx-auto mt-7 max-w-sm rounded-[24px] border border-line bg-[radial-gradient(120%_120%_at_50%_0%,#141c2b,#0b1019)] p-5"
+        className="relative mx-auto mt-5 max-w-sm rounded-[24px] border border-line bg-[radial-gradient(120%_120%_at_50%_0%,#141c2b,#0b1019)] p-4"
       >
         <span className="absolute top-4 right-4 inline-flex items-center gap-1.5 rounded-full border border-live/30 bg-live/10 px-2.5 py-1 text-[10.5px] font-semibold text-live">
           <span className="size-1.5 animate-[softpulse_1.6s_ease-in-out_infinite] rounded-full bg-live shadow-[0_0_8px_var(--color-live)]" />
@@ -136,13 +136,13 @@ export function ZamowPotwierdzenie() {
         </span>
 
         <div className="mx-auto w-fit rounded-[20px] bg-white p-3.5 shadow-[0_16px_40px_-16px_rgb(0_0_0_/_0.7)]">
-          <QRCodeSVG value={url} size={166} level="M" bgColor="#ffffff" fgColor="#0a0e14" />
+          <QRCodeSVG value={url} size={140} level="M" bgColor="#ffffff" fgColor="#0a0e14" />
         </div>
 
-        <p className="mt-4 text-center text-[13.5px] font-semibold text-ink">Zeskanuj telefonem — raport na żywo</p>
+        <p className="mt-3 text-center text-[13.5px] font-semibold text-ink">Zeskanuj telefonem — raport na żywo</p>
         <p className="mt-1 truncate text-center font-mono text-[11px] text-ink-faint">{pretty}</p>
 
-        <div className="mt-3.5 flex flex-wrap justify-center gap-2">
+        <div className="mt-3 flex flex-wrap justify-center gap-2">
           <Chip>{campaign.trucks} {plPlural(campaign.trucks, naczepaForms)}</Chip>
           <Chip>zasięg {formatMlnRange(est.impressionsMin, est.impressionsMax)}</Chip>
           <Chip>{duration}</Chip>
@@ -157,7 +157,7 @@ export function ZamowPotwierdzenie() {
         transition={{ delay: 0.7 }}
         type="button"
         onClick={() => navigate(`/kampanie/${campaign.id}`)}
-        className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-cta py-4 text-base font-semibold text-white shadow-[0_14px_34px_-12px_rgb(22_163_74_/_0.6)] transition-colors hover:bg-cta-strong"
+        className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-cta py-4 text-base font-semibold text-white shadow-[0_14px_34px_-12px_rgb(22_163_74_/_0.6)] transition-colors hover:bg-cta-strong"
       >
         Otwórz raport na żywo
         <ArrowRight />
@@ -189,7 +189,7 @@ export function ZamowPotwierdzenie() {
       <button
         type="button"
         onClick={() => navigate('/')}
-        className="mt-4 w-full py-3 text-[14px] font-semibold text-ink-muted transition-colors hover:text-ink"
+        className="mt-3 w-full py-3 text-[14px] font-semibold text-ink-muted transition-colors hover:text-ink"
       >
         Wróć na stronę główną
       </button>
