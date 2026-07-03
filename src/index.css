@@ -1,27 +1,70 @@
-@import '@fontsource-variable/inter';
+@import '@fontsource-variable/bricolage-grotesque';
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
 @import 'tailwindcss';
 
 @theme {
-  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Bricolage Grotesque Variable', 'Geist Variable', ui-sans-serif, sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* Brand palette — референс мокапа: синяя шапка, зелёные CTA, светлый фон */
-  --color-brand: #1e40af;
-  --color-brand-strong: #1c3a9e;
-  --color-brand-soft: #e8edfb;
+  /* Гибридная система: светлый «Keynote» (значения по умолчанию) + тёмный
+     «Mission Control» (переопределяется в .theme-dark ниже). Семантические
+     токены флипаются по теме; акцентные (accent/cta/neon/live) — общие. */
+  --color-canvas: #f5f7fb;
+  --color-surface: #ffffff;
+  --color-ink: #0b1220;
+  --color-ink-muted: #5b6472;
+  --color-ink-faint: #9da2ad;
+  --color-line: #e6eaf2;
+  --color-nav: rgb(255 255 255 / 0.88);
+
+  --color-brand: #1e3a8a;
+  --color-brand-strong: #12245e;
+  --color-brand-soft: #eaf1ff;
+
+  --color-accent: #3b82f6;
   --color-cta: #16a34a;
   --color-cta-strong: #15803d;
-  --color-canvas: #f1f5f9;
-  --color-surface: #ffffff;
-  --color-ink: #0f172a;
-  --color-ink-muted: #64748b;
-  --color-line: #e2e8f0;
+  --color-neon: #22d3ee;
+  --color-live: #a3e635;
+  --color-warn: #f59e0b;
+  --color-nav-active: #1e3a8a;
 
-  --radius-card: 1.25rem;
-  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.06), 0 8px 24px -12px rgb(15 23 42 / 0.12);
+  --radius-card: 1.375rem;
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.05), 0 14px 34px -22px rgb(15 23 42 / 0.18);
+}
+
+/* ── Тёмная тема: применяется на .theme-dark (карта, отчёт кампании, флота) ── */
+.theme-dark {
+  --color-canvas: #0a0e14;
+  --color-surface: #121826;
+  --color-ink: #e7ecf5;
+  --color-ink-muted: #8a94a6;
+  --color-ink-faint: #5b6577;
+  --color-line: #232c3d;
+  --color-nav: rgb(10 14 22 / 0.72);
+  --color-brand-soft: #1a2233;
+  --color-nav-active: #22d3ee;
+  --shadow-card: 0 14px 44px -18px rgb(0 0 0 / 0.6);
 }
 
 body {
   @apply bg-canvas font-sans text-ink antialiased;
+}
+
+/* Крупные заголовки экранов — дисплейный гротеск. */
+.font-display {
+  font-family: var(--font-display);
+}
+
+@keyframes softpulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+@keyframes growX {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
 }
 
 /* Тактильный слайдер визарда: залитый трек через inline-gradient, крупный thumb. */
@@ -29,7 +72,7 @@ body {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 6px;
+  height: 8px;
   border-radius: 9999px;
   outline: none;
   cursor: pointer;
@@ -37,26 +80,31 @@ body {
 .adt-range::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   border-radius: 9999px;
   background: #fff;
-  border: 2px solid var(--color-brand);
-  box-shadow: 0 2px 8px rgb(15 23 42 / 0.2);
+  border: 2.5px solid var(--color-brand);
+  box-shadow: 0 3px 12px rgb(30 58 138 / 0.4);
   transition: transform 0.12s ease;
 }
 .adt-range::-webkit-slider-thumb:active {
-  transform: scale(1.18);
+  transform: scale(1.16);
 }
 .adt-range::-moz-range-thumb {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   border-radius: 9999px;
   background: #fff;
-  border: 2px solid var(--color-brand);
-  box-shadow: 0 2px 8px rgb(15 23 42 / 0.2);
+  border: 2.5px solid var(--color-brand);
+  box-shadow: 0 3px 12px rgb(30 58 138 / 0.4);
 }
 .adt-range:focus-visible::-webkit-slider-thumb {
   outline: 2px solid var(--color-brand);
   outline-offset: 2px;
+}
+
+/* MapLibre: тёмная подложка контейнера + скрытый логотип для чистоты демо. */
+.maplibregl-map {
+  font-family: var(--font-sans);
 }

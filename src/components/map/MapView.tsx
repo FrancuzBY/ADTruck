@@ -5,7 +5,7 @@ import type { Truck } from '../../domain/types'
 import { formatNumber } from '../../i18n/format'
 import { createSimEngine } from '../../sim/engine'
 import type { TruckFeatureCollection } from '../../sim/features'
-import { EUROPE_BOUNDS, IS_E2E, makeArrowIcon, mapStyle } from './mapStyle'
+import { ARROW_COLORS, EUROPE_BOUNDS, IS_E2E, makeArrowIcon, mapStyle, type MapTheme } from './mapStyle'
 
 const SOURCE_ID = 'trucks'
 const ARROW_DRIVING = 'truck-arrow'
@@ -26,17 +26,20 @@ export interface MapViewProps {
   fleetKey?: string | number
   /** Интерактив (drag/zoom + nav-контрол). false — мини-карта покрытия в визарде. */
   interactive?: boolean
+  /** Тема подложки: 'dark' для mission-control экранов (mapa, raport, flota). */
+  theme?: MapTheme
 }
 
 /** Full-bleed карта Европы: один GeoJSON source + symbol-слой, обновление через setData. */
-export function MapView({ getTrucks, fleetKey, interactive = true }: MapViewProps) {
+export function MapView({ getTrucks, fleetKey, interactive = true, theme = 'light' }: MapViewProps) {
   const container = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!container.current) return
+    const arrow = ARROW_COLORS[theme]
     const map = new maplibregl.Map({
       container: container.current,
-      style: mapStyle(),
+      style: mapStyle(theme),
       bounds: EUROPE_BOUNDS,
       fitBoundsOptions: { padding: 24 },
       attributionControl: { compact: true },
@@ -60,8 +63,8 @@ export function MapView({ getTrucks, fleetKey, interactive = true }: MapViewProp
 
     map.on('load', () => {
       if (!IS_E2E) {
-        map.addImage(ARROW_DRIVING, makeArrowIcon(36, '#1e40af').getContext('2d')!.getImageData(0, 0, 36, 36))
-        map.addImage(ARROW_PARKED, makeArrowIcon(36, '#94a3b8').getContext('2d')!.getImageData(0, 0, 36, 36))
+        map.addImage(ARROW_DRIVING, makeArrowIcon(36, arrow.driving).getContext('2d')!.getImageData(0, 0, 36, 36))
+        map.addImage(ARROW_PARKED, makeArrowIcon(36, arrow.parked).getContext('2d')!.getImageData(0, 0, 36, 36))
       }
       map.addSource(SOURCE_ID, { type: 'geojson', data: EMPTY_FC })
 
@@ -71,7 +74,7 @@ export function MapView({ getTrucks, fleetKey, interactive = true }: MapViewProp
           id: 'trucks-layer',
           type: 'circle',
           source: SOURCE_ID,
-          paint: { 'circle-radius': 4, 'circle-color': ['case', ['get', 'isDriving'], '#1e40af', '#94a3b8'] },
+          paint: { 'circle-radius': 4, 'circle-color': ['case', ['get', 'isDriving'], arrow.driving, arrow.parked] },
         })
       } else {
         map.addLayer({
@@ -88,6 +91,7 @@ export function MapView({ getTrucks, fleetKey, interactive = true }: MapViewProp
         })
       }
 
+      const dark = theme === 'dark'
       const popup = new maplibregl.Popup({ closeButton: false, offset: 14 })
       map.on('click', 'trucks-layer', (e) => {
         const f = e.features?.[0]
@@ -99,11 +103,11 @@ export function MapView({ getTrucks, fleetKey, interactive = true }: MapViewProp
         popup
           .setLngLat((f.geometry as GeoJSON.Point).coordinates as [number, number])
           .setHTML(
-            `<div style="font:500 13px/1.4 Inter,sans-serif;color:#0f172a">
+            `<div style="font:500 13px/1.4 'Geist Variable',sans-serif;color:${dark ? '#E7ECF5' : '#0f172a'}">
               <div style="font-weight:700">${p.plate}</div>
-              <div style="color:#64748b">${p.routeName}</div>
+              <div style="color:${dark ? '#8A94A6' : '#64748b'}">${p.routeName}</div>
               <div style="margin-top:4px">${status}</div>
-              <div style="color:#64748b">dziś: ${formatNumber(Number(p.kmToday))} km</div>
+              <div style="color:${dark ? '#8A94A6' : '#64748b'}">dziś: ${formatNumber(Number(p.kmToday))} km</div>
             </div>`,
           )
           .addTo(map)
@@ -119,9 +123,9 @@ export function MapView({ getTrucks, fleetKey, interactive = true }: MapViewProp
       engine?.stop()
       map.remove()
     }
-    // fleetKey пересоздаёт карту при смене состава флота
+    // fleetKey/theme пересоздают карту при смене состава флота или темы подложки
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fleetKey, interactive])
+  }, [fleetKey, interactive, theme])
 
   return <div ref={container} className="size-full" data-testid="map" />
 }

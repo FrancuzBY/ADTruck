@@ -20,6 +20,16 @@ import { useCampaignStore } from '../store/campaign'
 const naczepaForms = { one: 'naczepa', few: 'naczepy', many: 'naczep' }
 const fade = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
+const dateInput =
+  'mt-1.5 w-full rounded-[14px] border border-line bg-canvas px-3.5 py-3 font-mono text-sm text-ink'
+
+const ArrowRight = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-[18px]">
+    <path d="M5 12h14" />
+    <path d="m13 6 6 6-6 6" />
+  </svg>
+)
+
 export function Zamow() {
   const navigate = useNavigate()
   const { draft, setDraft } = useCampaignStore()
@@ -29,36 +39,36 @@ export function Zamow() {
   const budgetTrucks = trucksForBudget(draft.budgetPln)
 
   return (
-    <div>
+    <div className="min-h-full bg-gradient-to-b from-white to-canvas">
       <TopBar title="Zamów kampanię" step={1} backTo="/" />
       <motion.div
-        className="space-y-4 px-4 pb-8"
+        className="space-y-3 px-5 pb-10"
         initial="initial"
         animate="animate"
         transition={{ staggerChildren: 0.06 }}
       >
         <motion.div variants={fade}>
-          <Card className="p-5">
-            <h2 className="text-sm font-semibold text-ink-muted">Termin kampanii</h2>
+          <Card className="p-[18px]">
+            <h2 className="text-[13px] font-semibold text-ink-muted">Termin kampanii</h2>
             <div className="mt-3 grid grid-cols-2 gap-3">
               <label className="block">
-                <span className="text-xs text-ink-muted">Od</span>
+                <span className="text-[11.5px] text-ink-faint">Od</span>
                 <input
                   type="date"
                   value={draft.startDate}
                   max={draft.endDate}
                   onChange={(e) => setDraft({ startDate: e.target.value })}
-                  className="mt-1 w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm font-medium text-ink"
+                  className={dateInput}
                 />
               </label>
               <label className="block">
-                <span className="text-xs text-ink-muted">Do</span>
+                <span className="text-[11.5px] text-ink-faint">Do</span>
                 <input
                   type="date"
                   value={draft.endDate}
                   min={draft.startDate}
                   onChange={(e) => setDraft({ endDate: e.target.value })}
-                  className="mt-1 w-full rounded-xl border border-line bg-canvas px-3 py-2 text-sm font-medium text-ink"
+                  className={dateInput}
                 />
               </label>
             </div>
@@ -67,17 +77,15 @@ export function Zamow() {
 
         <motion.div variants={fade}>
           <Card className="overflow-hidden">
-            <div className="px-5 pt-5">
-              <h2 className="text-sm font-semibold text-ink-muted">Zasięg w Europie</h2>
-            </div>
-            <div className="mt-3 h-44 w-full">
-              <MapView getTrucks={getTrucks} fleetKey={userTrucks.length} interactive={false} />
+            <h2 className="px-[18px] pt-4 pb-2 text-[13px] font-semibold text-ink-muted">Zasięg w Europie</h2>
+            <div className="h-[152px] w-full">
+              <MapView getTrucks={getTrucks} fleetKey={userTrucks.length} interactive={false} theme="light" />
             </div>
           </Card>
         </motion.div>
 
         <motion.div variants={fade}>
-          <Card className="space-y-6 p-5">
+          <Card className="space-y-5 p-[18px]">
             <Slider
               label="Liczba naczep"
               value={draft.trucks}
@@ -86,6 +94,7 @@ export function Zamow() {
               onChange={(v) => setDraft({ trucks: v })}
               format={(v) => `${v} ${plPlural(v, naczepaForms)}`}
             />
+            <div className="h-px bg-line" />
             <Slider
               label="Budżet miesięczny"
               value={draft.budgetPln}
@@ -99,9 +108,10 @@ export function Zamow() {
           </Card>
         </motion.div>
 
-        <motion.div variants={fade}>
+        <motion.div variants={fade} className="pt-1">
           <Button variant="cta" full onClick={() => navigate('/zamow/podsumowanie')}>
             Dalej
+            <ArrowRight />
           </Button>
         </motion.div>
       </motion.div>
