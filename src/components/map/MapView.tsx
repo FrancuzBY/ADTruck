@@ -39,6 +39,7 @@ export interface MapViewProps {
 export function MapView({ getTrucks, fleetKey, interactive = true, theme = 'dark', onSelectTruck, heatmap, showHeatmap }: MapViewProps) {
   const container = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
+  const loadedRef = useRef(false)
   const onSelectRef = useRef(onSelectTruck)
   const heatRef = useRef(heatmap)
   const showHeatRef = useRef(showHeatmap)
@@ -112,17 +113,17 @@ export function MapView({ getTrucks, fleetKey, interactive = true, theme = 'dark
         source: HEAT_ID,
         layout: { visibility: showHeatRef.current ? 'visible' : 'none' },
         paint: {
-          'heatmap-weight': ['interpolate', ['linear'], ['get', 'weight'], 0, 0.1, 0.3, 0.5, 1, 1],
-          'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 3, 1.4, 6, 3],
-          'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 3, 30, 6, 58],
-          'heatmap-opacity': 0.88,
+          'heatmap-weight': ['interpolate', ['linear'], ['get', 'weight'], 0, 0, 0.5, 0.35, 1, 0.85],
+          'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 3, 0.35, 6, 0.9],
+          'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 3, 13, 6, 28],
+          'heatmap-opacity': 0.8,
           'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'],
             0, 'rgba(6,9,15,0)',
-            0.12, 'rgba(34,211,238,0.3)',
-            0.32, 'rgba(34,211,238,0.62)',
-            0.52, 'rgba(163,230,53,0.78)',
-            0.74, 'rgba(245,158,11,0.9)',
-            1, 'rgba(249,115,22,0.98)'],
+            0.18, 'rgba(34,211,238,0.32)',
+            0.42, 'rgba(34,211,238,0.62)',
+            0.62, 'rgba(163,230,53,0.72)',
+            0.82, 'rgba(245,158,11,0.85)',
+            1, 'rgba(249,115,22,0.95)'],
         },
       })
 
@@ -160,10 +161,12 @@ export function MapView({ getTrucks, fleetKey, interactive = true, theme = 'dark
 
       engine = createSimEngine(getTrucks, setData)
       engine.start()
+      loadedRef.current = true
     })
 
     return () => {
       engine?.stop()
+      loadedRef.current = false
       mapRef.current = null
       map.remove()
     }
@@ -173,14 +176,14 @@ export function MapView({ getTrucks, fleetKey, interactive = true, theme = 'dark
   // Живое обновление данных heatmap без пересоздания карты.
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !map.isStyleLoaded() || !map.getSource(HEAT_ID)) return
-    ;(map.getSource(HEAT_ID) as maplibregl.GeoJSONSource).setData(heatmap ?? EMPTY_GEO)
+    if (!map || !loadedRef.current) return
+    ;(map.getSource(HEAT_ID) as maplibregl.GeoJSONSource | undefined)?.setData(heatmap ?? EMPTY_GEO)
   }, [heatmap])
 
   // Тумблер видимости heatmap.
   useEffect(() => {
     const map = mapRef.current
-    if (!map || !map.isStyleLoaded() || !map.getLayer(HEAT_ID)) return
+    if (!map || !loadedRef.current || !map.getLayer(HEAT_ID)) return
     map.setLayoutProperty(HEAT_ID, 'visibility', showHeatmap ? 'visible' : 'none')
   }, [showHeatmap])
 

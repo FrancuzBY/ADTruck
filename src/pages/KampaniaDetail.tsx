@@ -15,7 +15,7 @@ import { useCountUp } from '../hooks/useCountUp'
 import { useTick } from '../hooks/useTick'
 import { simNow } from '../sim/clock'
 import { campaignFeed } from '../sim/feed'
-import { cityHeatFeatures } from '../sim/reach'
+import { reachHeatFeatures } from '../sim/reach'
 import { campaignReport } from '../sim/report'
 import { kmInInterval } from '../sim/schedule'
 import { truckParams } from '../sim/simulator'
@@ -60,7 +60,7 @@ export function KampaniaDetail() {
     [campaign, trucks],
   )
   const getTrucks = useMemo(() => () => campaignTrucks, [campaignTrucks])
-  const heatmap = useMemo(() => cityHeatFeatures(campaignTrucks), [campaignTrucks])
+  const heatmap = useMemo(() => reachHeatFeatures(campaignTrucks), [campaignTrucks])
 
   const now = simNow()
   const report = campaign ? campaignReport(campaign, trucks, now) : null
