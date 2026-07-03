@@ -18,10 +18,15 @@ export function Flota() {
   const userTrucks = useFleetStore((s) => s.userTrucks)
   useTick(1000)
   const [selected, setSelected] = useState<Truck | null>(null)
+  const [q, setQ] = useState('')
   const myTrucks = useMemo(
     () => allTrucks(userTrucks).filter((t) => t.carrierId === MINE),
     [userTrucks],
   )
+  const filtered = useMemo(() => {
+    const s = q.trim().toUpperCase()
+    return s ? myTrucks.filter((t) => t.plate.toUpperCase().includes(s)) : myTrucks
+  }, [myTrucks, q])
   const now = simNow()
 
   return (
@@ -33,8 +38,30 @@ export function Flota() {
         </span>
       </div>
 
-      <div className="mt-5 space-y-2.5">
-        {myTrucks.map((t) => {
+      <div className="relative mt-4">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-ink-faint">
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-3.2-3.2" />
+        </svg>
+        <input
+          type="text"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Szukaj naczepy po numerze…"
+          className="w-full rounded-full border border-line bg-surface-2 py-2.5 pr-9 pl-10 text-sm text-ink uppercase [color-scheme:dark] placeholder:normal-case placeholder:text-ink-faint focus:border-neon focus:outline-none"
+        />
+        {q && (
+          <button type="button" onClick={() => setQ('')} aria-label="Wyczyść" className="absolute top-1/2 right-3 grid size-6 -translate-y-1/2 place-items-center rounded-full text-ink-muted hover:text-ink">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="size-4"><path d="M6 6l12 12M18 6 6 18" /></svg>
+          </button>
+        )}
+      </div>
+
+      <div className="mt-3 space-y-2.5">
+        {filtered.length === 0 && (
+          <p className="py-10 text-center text-sm text-ink-muted">Nie znaleziono naczepy „{q}”.</p>
+        )}
+        {filtered.map((t) => {
           const route = routeById(t.routeId)
           const s = route ? truckStateAt(now, t, route) : null
           const driving = !!s?.isDriving

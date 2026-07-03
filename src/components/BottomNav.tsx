@@ -18,10 +18,9 @@ const icon = {
       <path d="M9 4v14M15 6v14" />
     </svg>
   ),
-  megaphone: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="size-[22px]">
-      <path d="M4 10v4a1 1 0 0 0 1 1h2l4 4h2V5h-2L7 9H5a1 1 0 0 0-1 1Z" strokeLinejoin="round" />
-      <path d="M16.5 9.5a4 4 0 0 1 0 5M19 7a8 8 0 0 1 0 10" strokeLinecap="round" />
+  chart: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="size-[22px]">
+      <path d="M4 20V10M10 20V4M16 20v-6M22 20H2" />
     </svg>
   ),
   truck: (
@@ -50,7 +49,7 @@ export function BottomNav() {
     { to: '/', label: pl.nav.start, icon: icon.home },
     { to: '/mapa', label: pl.nav.mapa, icon: icon.map },
     role === 'advertiser'
-      ? { to: '/kampanie', label: pl.nav.kampanie, icon: icon.megaphone }
+      ? { to: '/kampanie', label: pl.nav.kampanie, icon: icon.chart }
       : { to: '/flota', label: pl.nav.flota, icon: icon.truck },
     { to: '/profil', label: pl.nav.profil, icon: icon.user },
   ]

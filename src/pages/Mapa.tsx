@@ -11,7 +11,7 @@ import { useTick } from '../hooks/useTick'
 import { simNow } from '../sim/clock'
 import { cityColumnFeatures, reachHeatFeatures } from '../sim/reach'
 import { truckStateAt } from '../sim/simulator'
-import { nextStop } from '../sim/stops'
+import { nextStop, routeCityStops } from '../sim/stops'
 import { allTrucks, useFleetStore } from '../store/fleet'
 
 const naczepaForms = { one: 'naczepa', few: 'naczepy', many: 'naczep' }
@@ -50,18 +50,21 @@ export function Mapa() {
   const hs = hud && hudRoute ? truckStateAt(now, hud, hudRoute) : null
   const hns = hud && hudRoute ? nextStop(now, hud, hudRoute) : null
 
+  // Кино-автотур ВЫБРАННОЙ фуры (тапнутой на карте), иначе — живого примера.
   async function runTour() {
     const map = mapInst.current
     if (!map || tourOn) return
+    const t = simNow()
+    const target = picked ?? example ?? trucks[0] ?? null
+    const tRoute = target ? routeById(target.routeId) : null
+    if (!target || !tRoute) return
     setTourOn(true)
     abortTour.current = false
-    const t = simNow()
-    let target: Truck | null = null
-    for (const tr of trucks) { const r = routeById(tr.routeId); if (r && truckStateAt(t, tr, r).isDriving) { target = tr; break } }
-    target ??= trucks[0] ?? null
-    const tRoute = target ? routeById(target.routeId) : null
-    const tState = target && tRoute ? truckStateAt(t, target, tRoute) : null
-    const ns = target && tRoute ? nextStop(t, target, tRoute) : null
+    const tState = truckStateAt(t, target, tRoute)
+    const stops = routeCityStops(tRoute)
+    const ns = nextStop(t, target, tRoute)
+    const nextCoord = ns ? stops.find((s) => s.name === ns.city) : undefined
+    const dest = stops.length ? stops[stops.length - 1] : undefined
 
     const step = async (opts: maplibregl.EaseToOptions, cap: string, ms: number) => {
       if (abortTour.current) throw new Error('abort')
@@ -70,11 +73,11 @@ export function Mapa() {
       await sleep(ms)
     }
     try {
-      await step({ center: [13, 50], zoom: 3.7, pitch: 0, bearing: 0 }, 'AdTruck — reklama, która jedzie przez całą Europę', 3200)
-      if (tState) await step({ center: [tState.lng, tState.lat], zoom: 6, pitch: 55, bearing: -20 }, `${target!.plate} · ${tRoute!.name}${tState.isDriving ? ` · ${tState.speedKmh} km/h` : ''}`, 3600)
-      if (ns) await step({ zoom: 5.6, pitch: 55, bearing: -10 }, `W drodze do: ${ns.city} · ${formatEta(ns.etaMs)}`, 3400)
-      await step({ center: [21.0, 52.0], zoom: 5, pitch: 58, bearing: -22 }, 'Zasięg koncentruje się w metropoliach i na korytarzach', 3600)
-      await step({ center: [13, 50], zoom: 3.7, pitch: 0, bearing: 0 }, `${formatNumber(driving)} ${plPlural(driving, naczepaForms)} w trasie · miliony kontaktów`, 3200)
+      await step({ center: [tState.lng, tState.lat], zoom: 4.4, pitch: 0, bearing: 0 }, `Śledzimy naczepę ${target.plate}`, 2600)
+      await step({ center: [tState.lng, tState.lat], zoom: 6.2, pitch: 55, bearing: -20 }, `${target.plate} · ${tRoute.name}${tState.isDriving ? ` · ${tState.speedKmh} km/h` : ' · postój'}`, 3600)
+      if (nextCoord) await step({ center: [nextCoord.lng, nextCoord.lat], zoom: 5.8, pitch: 55, bearing: -10 }, `W drodze do: ${ns!.city}${ns?.etaMs != null ? ` · ${formatEta(ns.etaMs)}` : ''}`, 3400)
+      if (dest) await step({ center: [dest.lng, dest.lat], zoom: 5.4, pitch: 55, bearing: -14 }, `Cel trasy: ${tRoute.to}`, 3400)
+      await step({ center: [13, 50], zoom: 3.7, pitch: 0, bearing: 0 }, `${formatNumber(driving)} ${plPlural(driving, naczepaForms)} w trasie · reklama w ruchu`, 3000)
     } catch { /* прервано */ }
     setCaption(null)
     setTourOn(false)
