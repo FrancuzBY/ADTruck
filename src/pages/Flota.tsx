@@ -1,6 +1,9 @@
-import { useMemo } from 'react'
+import { AnimatePresence } from 'framer-motion'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
+import { TruckDetailSheet } from '../components/TruckDetailSheet'
 import { routeById } from '../data/routes'
+import type { Truck } from '../domain/types'
 import { formatNumber, plPlural } from '../i18n/format'
 import { useTick } from '../hooks/useTick'
 import { simNow } from '../sim/clock'
@@ -14,6 +17,7 @@ const naczepaForms = { one: 'naczepa', few: 'naczepy', many: 'naczep' }
 export function Flota() {
   const userTrucks = useFleetStore((s) => s.userTrucks)
   useTick(1000)
+  const [selected, setSelected] = useState<Truck | null>(null)
   const myTrucks = useMemo(
     () => allTrucks(userTrucks).filter((t) => t.carrierId === MINE),
     [userTrucks],
@@ -36,9 +40,11 @@ export function Flota() {
           const driving = !!s?.isDriving
           const dot = driving ? 'var(--color-live)' : '#5c6b82'
           return (
-            <div
+            <button
               key={t.id}
-              className="flex items-center gap-3.5 rounded-2xl border border-line bg-surface px-4 py-3.5"
+              type="button"
+              onClick={() => setSelected(t)}
+              className="flex w-full items-center gap-3.5 rounded-2xl border border-line bg-surface px-4 py-3.5 text-left transition-colors hover:bg-surface-2"
             >
               <span className="relative flex size-2.5 shrink-0 items-center justify-center">
                 {driving && (
@@ -47,18 +53,13 @@ export function Flota() {
                     style={{ background: dot, opacity: 0.28 }}
                   />
                 )}
-                <span
-                  className="size-2.5 rounded-full"
-                  style={{ background: dot, boxShadow: driving ? `0 0 8px ${dot}` : undefined }}
-                />
+                <span className="size-2.5 rounded-full" style={{ background: dot, boxShadow: driving ? `0 0 8px ${dot}` : undefined }} />
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-[15px] font-semibold tracking-wide text-ink">{t.plate}</span>
                   {t.addedByUser && (
-                    <span className="rounded-md bg-live/15 px-2 py-0.5 text-[10px] font-semibold text-live">
-                      nowa
-                    </span>
+                    <span className="rounded-md bg-live/15 px-2 py-0.5 text-[10px] font-semibold text-live">nowa</span>
                   )}
                 </div>
                 <p className="mt-0.5 truncate text-[12.5px] text-ink-muted">{route?.name ?? '—'}</p>
@@ -71,20 +72,24 @@ export function Flota() {
                   {s ? `${formatNumber(s.kmToday)} km dziś` : ''}
                 </p>
               </div>
-            </div>
+            </button>
           )
         })}
       </div>
 
       <Link
         to="/flota/dodaj"
-        className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-cta py-4 text-base font-semibold text-white shadow-[0_12px_30px_-10px_rgb(22_163_74_/_0.55)] transition-colors hover:bg-cta-strong"
+        className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-cta py-4 text-base font-semibold text-white shadow-[0_12px_30px_-10px_rgb(22_163_74_/_0.5)] transition-colors hover:bg-cta-strong"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className="size-[18px]">
           <path d="M12 5v14M5 12h14" />
         </svg>
         Dodaj naczepę
       </Link>
+
+      <AnimatePresence>
+        {selected && <TruckDetailSheet truck={selected} onClose={() => setSelected(null)} />}
+      </AnimatePresence>
     </div>
   )
 }

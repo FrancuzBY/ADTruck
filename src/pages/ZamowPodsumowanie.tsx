@@ -18,7 +18,6 @@ export function ZamowPodsumowanie() {
   const { draft, createCampaign } = useCampaignStore()
   const est = estimateCampaign(draft)
 
-  // Живые счётчики ключевых цифр.
   const km = Math.round(useCountUp(est.totalKm))
   const price = Math.round(useCountUp(est.pricePln))
   const wholeMonths = Number.isInteger(est.months) ? est.months : null
@@ -33,7 +32,7 @@ export function ZamowPodsumowanie() {
   }
 
   return (
-    <div className="min-h-full bg-gradient-to-b from-white to-canvas">
+    <div className="min-h-full bg-canvas">
       <TopBar title="Podsumowanie" step={2} />
       <motion.div
         className="space-y-3 px-5 pb-10"
@@ -48,17 +47,17 @@ export function ZamowPodsumowanie() {
           <StatRow label="Zasięg (wyświetlenia)" value={formatMlnRange(est.impressionsMin, est.impressionsMax)} />
         </Card>
 
-        <div className="rounded-card border border-[#bbe5c8] bg-gradient-to-br from-[#eaf7ee] to-[#daf1e2] p-[22px] shadow-[0_14px_34px_-20px_rgb(22_163_74_/_0.4)]">
-          <div className="font-mono text-xs font-semibold tracking-[0.1em] text-cta-strong uppercase">
+        <div className="rounded-card border border-cta/25 bg-[linear-gradient(160deg,rgb(22_163_74_/_0.16),rgb(22_163_74_/_0.04))] p-[22px]">
+          <div className="font-mono text-xs font-semibold tracking-[0.1em] text-[#4ade80] uppercase">
             Koszt kampanii
           </div>
           <div className="mt-2 flex items-baseline gap-1.5">
-            <span className="font-display text-[44px] leading-none font-extrabold tracking-tight tabular-nums text-cta-strong">
+            <span className="font-display text-[44px] leading-none font-extrabold tracking-tight tabular-nums text-[#4ade80]">
               {formatNumber(price)}
             </span>
-            <span className="font-display text-[26px] font-bold text-cta-strong">zł</span>
+            <span className="font-display text-[26px] font-bold text-[#4ade80]">zł</span>
           </div>
-          <div className="mt-2 font-mono text-[12.5px] text-[#3f8f5b]">
+          <div className="mt-2 font-mono text-[12.5px] text-[#6bbf8a]">
             {draft.trucks} × {formatPln(3000)} × {durationStr}
           </div>
         </div>

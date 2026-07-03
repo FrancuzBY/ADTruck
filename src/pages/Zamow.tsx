@@ -21,7 +21,7 @@ const naczepaForms = { one: 'naczepa', few: 'naczepy', many: 'naczep' }
 const fade = { initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }
 
 const dateInput =
-  'mt-1.5 w-full rounded-[14px] border border-line bg-canvas px-3.5 py-3 font-mono text-sm text-ink'
+  'mt-1.5 w-full rounded-[14px] border border-line bg-surface-2 px-3.5 py-3 font-mono text-sm text-ink [color-scheme:dark]'
 
 const ArrowRight = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-[18px]">
@@ -39,7 +39,7 @@ export function Zamow() {
   const budgetTrucks = trucksForBudget(draft.budgetPln)
 
   return (
-    <div className="min-h-full bg-gradient-to-b from-white to-canvas">
+    <div className="min-h-full bg-canvas">
       <TopBar title="Zamów kampanię" step={1} backTo="/" />
       <motion.div
         className="space-y-3 px-5 pb-10"
@@ -79,7 +79,7 @@ export function Zamow() {
           <Card className="overflow-hidden">
             <h2 className="px-[18px] pt-4 pb-2 text-[13px] font-semibold text-ink-muted">Zasięg w Europie</h2>
             <div className="h-[152px] w-full">
-              <MapView getTrucks={getTrucks} fleetKey={userTrucks.length} interactive={false} theme="light" />
+              <MapView getTrucks={getTrucks} fleetKey={userTrucks.length} interactive={false} />
             </div>
           </Card>
         </motion.div>

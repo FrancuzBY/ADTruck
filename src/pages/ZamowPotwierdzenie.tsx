@@ -22,7 +22,7 @@ export function ZamowPotwierdzenie() {
   const navigate = useNavigate()
 
   return (
-    <div className="flex min-h-dvh flex-col bg-gradient-to-b from-white to-canvas px-[22px] pt-24 pb-8">
+    <div className="flex min-h-dvh flex-col bg-canvas px-[22px] pt-24 pb-8">
       <motion.div
         initial={{ scale: 0.5, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -70,10 +70,10 @@ export function ZamowPotwierdzenie() {
           <motion.div
             key={f.to}
             variants={{ initial: { opacity: 0, y: 12 }, animate: { opacity: 1, y: 0 } }}
-            className="rounded-[20px] border border-line bg-surface p-[18px] shadow-card"
+            className="rounded-[20px] border border-line bg-surface p-[18px]"
           >
             <div className="flex items-center gap-3">
-              <div className="grid size-[42px] flex-none place-items-center rounded-[13px] bg-brand-soft text-brand">
+              <div className="grid size-[42px] flex-none place-items-center rounded-[13px] bg-brand-soft text-neon">
                 {f.icon}
               </div>
               <div className="flex-1">
@@ -84,7 +84,7 @@ export function ZamowPotwierdzenie() {
             <button
               type="button"
               onClick={() => navigate(f.to)}
-              className="mt-3.5 w-full rounded-[13px] bg-brand-soft py-3.5 text-[14.5px] font-semibold text-brand transition-[filter] hover:brightness-[0.97]"
+              className="mt-3.5 w-full rounded-[13px] border border-line bg-surface-2 py-3.5 text-[14.5px] font-semibold text-ink transition-colors hover:bg-surface"
             >
               {f.cta}
             </button>

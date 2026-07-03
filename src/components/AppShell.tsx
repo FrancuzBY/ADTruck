@@ -1,20 +1,13 @@
 import { useEffect } from 'react'
-import { Outlet, useLocation } from 'react-router'
+import { Outlet } from 'react-router'
 import { setSimSpeed } from '../sim/clock'
 import { useAppStore } from '../store/app'
 import { BottomNav } from './BottomNav'
 
-/** Экраны mission-control (тёмная тема): live-карта, отчёт кампании, флота. */
-function isDarkRoute(pathname: string): boolean {
-  return pathname === '/mapa' || pathname === '/flota' || /^\/kampanie\/.+/.test(pathname)
-}
-
-/** Mobile-first app-shell: колонка max-w-md по центру, контент над нижней навигацией. */
+/** Mobile-first app-shell: единая тёмная тема, колонка max-w-md, контент над плавающей навигацией. */
 export function AppShell() {
   const simSpeed = useAppStore((s) => s.simSpeed)
   const setStoreSpeed = useAppStore((s) => s.setSimSpeed)
-  const { pathname } = useLocation()
-  const dark = isDarkRoute(pathname)
 
   // ?speed=60 в URL ускоряет демо/e2e (переопределяет сохранённую скорость один раз).
   useEffect(() => {
@@ -28,12 +21,8 @@ export function AppShell() {
   }, [simSpeed])
 
   return (
-    <div
-      className={`relative mx-auto flex min-h-dvh w-full max-w-md flex-col bg-canvas shadow-card ${
-        dark ? 'theme-dark' : ''
-      }`}
-    >
-      <main className="flex-1 pb-24">
+    <div className="relative mx-auto flex min-h-dvh w-full max-w-md flex-col bg-canvas">
+      <main className="flex-1 pb-28">
         <Outlet />
       </main>
       <BottomNav />

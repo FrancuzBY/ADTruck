@@ -1,113 +1,159 @@
 import { motion } from 'framer-motion'
 import { useMemo } from 'react'
 import { Link } from 'react-router'
-import { LazyMapView as MapView } from '../components/map/LazyMapView'
 import { pl } from '../i18n/pl'
+import { formatNumber, plPlural } from '../i18n/format'
 import { allTrucks, useFleetStore } from '../store/fleet'
 
-const ArrowRight = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-[18px]">
-    <path d="M5 12h14" />
-    <path d="m13 6 6 6-6 6" />
-  </svg>
-)
+const naczepaForms = { one: 'naczepa', few: 'naczepy', many: 'naczep' }
 
-const props = [
-  {
-    title: pl.landing.propGpsTitle,
-    text: pl.landing.propGpsText,
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="size-[22px]">
-        <path d="M12 21s7-5.5 7-11a7 7 0 0 0-14 0c0 5.5 7 11 7 11Z" />
-        <circle cx="12" cy="10" r="2.5" />
-      </svg>
-    ),
-  },
-  {
-    title: pl.landing.propReachTitle,
-    text: pl.landing.propReachText,
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="size-[22px]">
-        <circle cx="12" cy="12" r="9" />
-        <path d="M3 12h18M12 3c2.5 2.5 3.8 5.7 3.8 9s-1.3 6.5-3.8 9c-2.5-2.5-3.8-5.7-3.8-9S9.5 5.5 12 3Z" />
-      </svg>
-    ),
-  },
-  {
-    title: pl.landing.propReportsTitle,
-    text: pl.landing.propReportsText,
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="size-[22px]">
-        <path d="M4 20V10M10 20V4M16 20v-6M22 20H2" />
-      </svg>
-    ),
-  },
+// Узлы стилизованной карты Европы (viewBox 390×520).
+const C = {
+  gdansk: { x: 298, y: 150, label: 'Gdańsk' },
+  warszawa: { x: 330, y: 250, label: 'Warszawa' },
+  krakow: { x: 300, y: 322, label: 'Kraków' },
+  berlin: { x: 205, y: 250 },
+  wroclaw: { x: 250, y: 292 },
+  praga: { x: 220, y: 302 },
+  wieden: { x: 250, y: 352 },
+  amsterdam: { x: 150, y: 226 },
+  paryz: { x: 116, y: 336 },
+  rzym: { x: 250, y: 452, label: 'Rzym' },
+  madryt: { x: 56, y: 470, label: 'Madryt' },
+} as const
+
+type Node = { x: number; y: number; label?: string }
+const NODES = C as Record<string, Node>
+
+// Лучи-маршруты + длительность бегущей точки.
+const ROUTES: [keyof typeof C, keyof typeof C, number][] = [
+  ['warszawa', 'gdansk', 6.5],
+  ['warszawa', 'berlin', 7.5],
+  ['warszawa', 'krakow', 6],
+  ['krakow', 'wieden', 7],
+  ['wieden', 'rzym', 9],
+  ['berlin', 'amsterdam', 6.8],
+  ['wroclaw', 'paryz', 9.5],
+  ['paryz', 'madryt', 11],
+  ['warszawa', 'praga', 7.2],
 ]
 
-const fade = { initial: { opacity: 0, y: 14 }, animate: { opacity: 1, y: 0 } }
+const routePath = (a: Node, b: Node) => `M${a.x} ${a.y}L${b.x} ${b.y}`
 
 export function Landing() {
   const userTrucks = useFleetStore((s) => s.userTrucks)
-  const trucks = useMemo(() => allTrucks(userTrucks), [userTrucks])
-  const getTrucks = useMemo(() => () => trucks, [trucks])
+  const count = useMemo(() => allTrucks(userTrucks).length, [userTrucks])
 
   return (
-    <div className="min-h-full bg-gradient-to-b from-white via-canvas to-[#eef2fa] px-[22px] pt-[78px] pb-4">
-      <motion.div initial="initial" animate="animate" transition={{ staggerChildren: 0.07 }}>
-        <motion.span
-          variants={fade}
-          className="font-mono text-[11.5px] font-medium tracking-[0.16em] text-accent uppercase"
+    <div className="relative flex min-h-dvh flex-col overflow-hidden bg-[radial-gradient(130%_80%_at_50%_-6%,#16274a_0%,#0b1019_46%,#06090f_100%)] px-7 pt-16 pb-28">
+      {/* Анимированная карта-фон: светящиеся лучи + бегущие точки */}
+      <svg
+        aria-hidden
+        viewBox="0 0 390 520"
+        preserveAspectRatio="xMidYMid slice"
+        className="pointer-events-none absolute inset-0 size-full opacity-90"
+      >
+        {ROUTES.map(([a, b], i) => (
+          <path key={`glow${i}`} id={`beam${i}`} d={routePath(NODES[a], NODES[b])} fill="none" stroke="#22d3ee" strokeWidth="3" strokeLinecap="round" opacity="0.1" />
+        ))}
+        {ROUTES.map(([a, b], i) => (
+          <path
+            key={`flow${i}`}
+            d={routePath(NODES[a], NODES[b])}
+            fill="none"
+            stroke="#22d3ee"
+            strokeWidth="1.3"
+            strokeLinecap="round"
+            strokeDasharray="1 13"
+            opacity="0.75"
+            style={{ animation: `beamflow ${ROUTES[i][2] * 1.4}s linear infinite` }}
+          />
+        ))}
+        {/* Бегущие точки-фуры вдоль лучей */}
+        {ROUTES.map(([, , dur], i) => (
+          <g key={`dot${i}`}>
+            <circle r="5" fill="#a3e635" opacity="0.22">
+              <animateMotion dur={`${dur}s`} repeatCount="indefinite" begin={`${i * 0.7}s`}>
+                <mpath xlinkHref={`#beam${i}`} />
+              </animateMotion>
+            </circle>
+            <circle r="2.4" fill="#a3e635">
+              <animateMotion dur={`${dur}s`} repeatCount="indefinite" begin={`${i * 0.7}s`}>
+                <mpath xlinkHref={`#beam${i}`} />
+              </animateMotion>
+            </circle>
+          </g>
+        ))}
+        {/* Узлы-города */}
+        {Object.values(NODES).map((n, i) => (
+          <g key={`node${i}`}>
+            <circle cx={n.x} cy={n.y} r="5.5" fill="#22d3ee" opacity="0.18" />
+            <circle cx={n.x} cy={n.y} r="2.6" fill="#22d3ee" />
+            {n.label && (
+              <text x={n.x + 9} y={n.y + 4} fill="#8a94a6" fontSize="11" fontFamily="'Geist Mono Variable', monospace">
+                {n.label}
+              </text>
+            )}
+          </g>
+        ))}
+      </svg>
+      {/* затемнение сверху/снизу для читаемости текста */}
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,#0a0e16_2%,rgba(10,14,22,0)_26%,rgba(6,9,15,0)_60%,#06090f_98%)]" />
+
+      <motion.div
+        className="relative z-10 flex flex-1 flex-col"
+        initial="i"
+        animate="a"
+        transition={{ staggerChildren: 0.08 }}
+      >
+        <motion.div variants={{ i: { opacity: 0, y: 10 }, a: { opacity: 1, y: 0 } }} className="flex items-center gap-2.5">
+          <span className="size-[7px] rounded-full bg-live shadow-[0_0_12px_var(--color-live)]" />
+          <span className="font-mono text-[11.5px] tracking-[0.18em] text-live uppercase">Pitch · 2026</span>
+        </motion.div>
+
+        <motion.h1
+          variants={{ i: { opacity: 0, y: 12 }, a: { opacity: 1, y: 0 } }}
+          className="mt-6 font-display text-[64px] leading-[0.9] font-extrabold tracking-[-0.038em] text-white"
         >
           {pl.appName}
-        </motion.span>
-        <motion.h1
-          variants={fade}
-          className="mt-3 font-display text-[35px] leading-[1.02] font-extrabold tracking-tight text-balance text-ink"
-        >
-          {pl.landing.heroTitle}
         </motion.h1>
-        <motion.p variants={fade} className="mt-3.5 text-[15.5px] leading-relaxed text-ink-muted">
-          {pl.landing.heroSubtitle}
+        <motion.p
+          variants={{ i: { opacity: 0, y: 12 }, a: { opacity: 1, y: 0 } }}
+          className="mt-4 max-w-[300px] font-display text-[24px] leading-[1.16] font-medium tracking-tight text-[#c3d0e6]"
+        >
+          {pl.tagline}
         </motion.p>
 
-        <motion.div variants={fade}>
-          <Link
-            to="/zamow"
-            className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-cta px-6 py-4 text-base font-semibold text-white shadow-[0_10px_26px_-10px_rgb(22_163_74_/_0.55)] transition-colors hover:bg-cta-strong"
-          >
-            {pl.landing.cta}
-            <ArrowRight />
-          </Link>
-        </motion.div>
+        <div className="flex-1 min-h-[130px]" />
 
         <motion.div
-          variants={fade}
-          className="relative mt-5 h-[174px] overflow-hidden rounded-[22px] border border-line shadow-[0_18px_36px_-22px_rgb(30_58_138_/_0.3)]"
+          variants={{ i: { opacity: 0, y: 12 }, a: { opacity: 1, y: 0 } }}
+          className="mb-4 flex items-center gap-3 rounded-2xl border border-live/20 bg-surface/60 px-4 py-3.5 backdrop-blur-md"
         >
-          <MapView getTrucks={getTrucks} fleetKey={userTrucks.length} interactive={false} theme="light" />
-          <div className="absolute top-3 left-3 flex items-center gap-1.5 rounded-full border border-line bg-white/92 px-2.5 py-1.5 shadow-sm">
-            <span className="size-1.5 rounded-full bg-cta" />
-            <span className="font-mono text-[10.5px] text-ink">na żywo</span>
-          </div>
+          <span className="size-2 flex-none animate-[softpulse_1.8s_ease-in-out_infinite] rounded-full bg-live shadow-[0_0_10px_var(--color-live)]" />
+          <span className="font-mono text-[12.5px] leading-snug text-[#cdd7e6]">
+            <b className="text-white">{formatNumber(count)} {plPlural(count, naczepaForms)}</b> w trasie przez całą Europę
+          </span>
         </motion.div>
 
-        <div className="mt-4 flex flex-col gap-3">
-          {props.map((p) => (
-            <motion.article
-              key={p.title}
-              variants={fade}
-              className="flex items-start gap-3.5 rounded-[20px] border border-line bg-surface p-4 shadow-card"
-            >
-              <div className="grid size-[42px] flex-none place-items-center rounded-[13px] bg-brand-soft text-brand">
-                {p.icon}
-              </div>
-              <div>
-                <h2 className="text-[15.5px] font-semibold text-ink">{p.title}</h2>
-                <p className="mt-0.5 text-[13px] leading-snug text-ink-muted">{p.text}</p>
-              </div>
-            </motion.article>
-          ))}
-        </div>
+        <motion.div variants={{ i: { opacity: 0, y: 12 }, a: { opacity: 1, y: 0 } }}>
+          <Link
+            to="/zamow"
+            className="flex w-full items-center justify-center gap-2.5 rounded-full bg-cta py-[17px] text-[16.5px] font-semibold text-white shadow-[0_12px_32px_-8px_rgb(22_163_74_/_0.65)] transition-colors hover:bg-cta-strong"
+          >
+            Rozpocznij demo
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-[18px]">
+              <path d="M5 12h14" />
+              <path d="m13 6 6 6-6 6" />
+            </svg>
+          </Link>
+        </motion.div>
+        <motion.p
+          variants={{ i: { opacity: 0, y: 12 }, a: { opacity: 1, y: 0 } }}
+          className="mt-4 text-center text-[11.5px] text-ink-faint"
+        >
+          Mobilna platforma reklamy na naczepach TIR
+        </motion.p>
       </motion.div>
     </div>
   )

@@ -3,10 +3,12 @@ import type { ComponentPropsWithoutRef } from 'react'
 
 type Variant = 'cta' | 'primary' | 'secondary' | 'ghost'
 
+// Единый акцент действий — зелёный. primary === cta (кнопки одинаковые).
+const GREEN = 'bg-cta text-white hover:bg-cta-strong shadow-[0_12px_30px_-10px_rgb(22_163_74_/_0.5)]'
 const VARIANTS: Record<Variant, string> = {
-  cta: 'bg-cta text-white hover:bg-cta-strong shadow-[0_12px_30px_-10px_rgb(22_163_74_/_0.55)]',
-  primary: 'bg-brand text-white hover:bg-brand-strong shadow-card',
-  secondary: 'bg-brand-soft text-brand hover:brightness-[0.97]',
+  cta: GREEN,
+  primary: GREEN,
+  secondary: 'border border-line bg-surface-2 text-ink hover:bg-surface',
   ghost: 'text-ink-muted hover:text-ink',
 }
 

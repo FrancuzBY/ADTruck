@@ -1,38 +1,40 @@
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useRef } from 'react'
+import { routeById } from '../../data/routes'
 import type { Truck } from '../../domain/types'
-import { formatNumber } from '../../i18n/format'
 import { createSimEngine } from '../../sim/engine'
 import type { TruckFeatureCollection } from '../../sim/features'
+import { routeGeometry } from '../../sim/simulator'
 import { ARROW_COLORS, EUROPE_BOUNDS, IS_E2E, makeArrowIcon, mapStyle, type MapTheme } from './mapStyle'
 
 const SOURCE_ID = 'trucks'
+const SEL_ID = 'sel'
 const ARROW_DRIVING = 'truck-arrow'
 const ARROW_PARKED = 'truck-arrow-parked'
 const EMPTY_FC: TruckFeatureCollection = { type: 'FeatureCollection', features: [] }
+const EMPTY_GEO: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] }
 
 declare global {
   interface Window {
-    /** Debug-хук для e2e: число фур и позиции без чтения пикселей. */
     __adtruckDebug?: { count: number; features: TruckFeatureCollection['features'] }
   }
 }
 
 export interface MapViewProps {
-  /** Флот для отрисовки (полный или отфильтрованный по кампании). */
   getTrucks: () => Truck[]
-  /** Ключ, меняющийся при смене состава флота — пересоздаёт движок. */
   fleetKey?: string | number
-  /** Интерактив (drag/zoom + nav-контрол). false — мини-карта покрытия в визарде. */
   interactive?: boolean
-  /** Тема подложки: 'dark' для mission-control экранов (mapa, raport, flota). */
   theme?: MapTheme
+  /** Клик по фуре: подсвечивается её маршрут (пройдено/осталось) и вызывается колбэк с id. */
+  onSelectTruck?: (id: string) => void
 }
 
-/** Full-bleed карта Европы: один GeoJSON source + symbol-слой, обновление через setData. */
-export function MapView({ getTrucks, fleetKey, interactive = true, theme = 'light' }: MapViewProps) {
+/** Full-bleed карта Европы: symbol-слой флота + подсветка выбранного маршрута. */
+export function MapView({ getTrucks, fleetKey, interactive = true, theme = 'dark', onSelectTruck }: MapViewProps) {
   const container = useRef<HTMLDivElement>(null)
+  const onSelectRef = useRef(onSelectTruck)
+  onSelectRef.current = onSelectTruck
 
   useEffect(() => {
     if (!container.current) return
@@ -45,20 +47,45 @@ export function MapView({ getTrucks, fleetKey, interactive = true, theme = 'ligh
       attributionControl: { compact: true },
       interactive,
     })
-    if (interactive) {
-      map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
-    }
+    if (interactive) map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
 
     let engine: ReturnType<typeof createSimEngine> | null = null
 
-    const publishDebug = (fc: TruckFeatureCollection) => {
+    const setData = (fc: TruckFeatureCollection) => {
+      ;(map.getSource(SOURCE_ID) as maplibregl.GeoJSONSource | undefined)?.setData(fc)
       if (IS_E2E) window.__adtruckDebug = { count: fc.features.length, features: fc.features }
     }
 
-    const setData = (fc: TruckFeatureCollection) => {
-      const src = map.getSource(SOURCE_ID) as maplibregl.GeoJSONSource | undefined
-      src?.setData(fc)
-      publishDebug(fc)
+    const clearSel = () =>
+      (map.getSource(SEL_ID) as maplibregl.GeoJSONSource | undefined)?.setData(EMPTY_GEO)
+
+    const revealRoute = (truckId: string, clng: number, clat: number) => {
+      try {
+        const truck = getTrucks().find((t) => t.id === truckId)
+        const route = truck && routeById(truck.routeId)
+        if (!route) return
+        const pts = routeGeometry(route).points
+        if (pts.length < 2) return
+        let idx = 0
+        let best = Infinity
+        for (let i = 0; i < pts.length; i++) {
+          const dd = (pts[i][0] - clng) ** 2 + (pts[i][1] - clat) ** 2
+          if (dd < best) { best = dd; idx = i }
+        }
+        const coords = (a: number, b?: number): number[][] => pts.slice(a, b)
+        const fc: GeoJSON.FeatureCollection = {
+          type: 'FeatureCollection',
+          features: [
+            { type: 'Feature', properties: { seg: 'rem' }, geometry: { type: 'LineString', coordinates: coords(idx) } },
+            { type: 'Feature', properties: { seg: 'trav' }, geometry: { type: 'LineString', coordinates: coords(0, idx + 1) } },
+            { type: 'Feature', properties: { pt: 'o' }, geometry: { type: 'Point', coordinates: pts[0] } },
+            { type: 'Feature', properties: { pt: 'd' }, geometry: { type: 'Point', coordinates: pts[pts.length - 1] } },
+          ],
+        }
+        ;(map.getSource(SEL_ID) as maplibregl.GeoJSONSource | undefined)?.setData(fc)
+      } catch {
+        /* подсветка маршрута не критична */
+      }
     }
 
     map.on('load', () => {
@@ -66,54 +93,38 @@ export function MapView({ getTrucks, fleetKey, interactive = true, theme = 'ligh
         map.addImage(ARROW_DRIVING, makeArrowIcon(36, arrow.driving).getContext('2d')!.getImageData(0, 0, 36, 36))
         map.addImage(ARROW_PARKED, makeArrowIcon(36, arrow.parked).getContext('2d')!.getImageData(0, 0, 36, 36))
       }
-      map.addSource(SOURCE_ID, { type: 'geojson', data: EMPTY_FC })
 
+      // Слой подсветки маршрута — под фурами.
+      map.addSource(SEL_ID, { type: 'geojson', data: EMPTY_GEO })
+      map.addLayer({ id: 'sel-rem', type: 'line', source: SEL_ID, filter: ['==', ['get', 'seg'], 'rem'], layout: { 'line-cap': 'round' }, paint: { 'line-color': '#22d3ee', 'line-width': 2.5, 'line-dasharray': [1.5, 1.5], 'line-opacity': 0.85 } })
+      map.addLayer({ id: 'sel-trav', type: 'line', source: SEL_ID, filter: ['==', ['get', 'seg'], 'trav'], layout: { 'line-cap': 'round' }, paint: { 'line-color': '#a3e635', 'line-width': 3.5, 'line-opacity': 0.95 } })
+      map.addLayer({ id: 'sel-pts', type: 'circle', source: SEL_ID, filter: ['has', 'pt'], paint: { 'circle-radius': 5, 'circle-color': ['case', ['==', ['get', 'pt'], 'o'], '#a3e635', '#22d3ee'], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 1.5 } })
+
+      map.addSource(SOURCE_ID, { type: 'geojson', data: EMPTY_FC })
       if (IS_E2E) {
-        // Без тайлов рисуем простые круги — достаточно, чтобы слой существовал.
-        map.addLayer({
-          id: 'trucks-layer',
-          type: 'circle',
-          source: SOURCE_ID,
-          paint: { 'circle-radius': 4, 'circle-color': ['case', ['get', 'isDriving'], arrow.driving, arrow.parked] },
-        })
+        map.addLayer({ id: 'trucks-layer', type: 'circle', source: SOURCE_ID, paint: { 'circle-radius': 4, 'circle-color': ['case', ['get', 'isDriving'], arrow.driving, arrow.parked] } })
       } else {
         map.addLayer({
-          id: 'trucks-layer',
-          type: 'symbol',
-          source: SOURCE_ID,
-          layout: {
-            'icon-image': ['case', ['get', 'isDriving'], ARROW_DRIVING, ARROW_PARKED],
-            'icon-rotate': ['get', 'bearing'],
-            'icon-rotation-alignment': 'map',
-            'icon-allow-overlap': true,
-            'icon-size': 0.6,
-          },
+          id: 'trucks-layer', type: 'symbol', source: SOURCE_ID,
+          layout: { 'icon-image': ['case', ['get', 'isDriving'], ARROW_DRIVING, ARROW_PARKED], 'icon-rotate': ['get', 'bearing'], 'icon-rotation-alignment': 'map', 'icon-allow-overlap': true, 'icon-size': 0.6 },
         })
       }
 
-      const dark = theme === 'dark'
-      const popup = new maplibregl.Popup({ closeButton: false, offset: 14 })
-      map.on('click', 'trucks-layer', (e) => {
-        const f = e.features?.[0]
-        if (!f) return
-        const p = f.properties as Record<string, unknown>
-        const status = p.isDriving === true || p.isDriving === 'true'
-          ? `w drodze · ${p.speedKmh} km/h`
-          : 'postój'
-        popup
-          .setLngLat((f.geometry as GeoJSON.Point).coordinates as [number, number])
-          .setHTML(
-            `<div style="font:500 13px/1.4 'Geist Variable',sans-serif;color:${dark ? '#E7ECF5' : '#0f172a'}">
-              <div style="font-weight:700">${p.plate}</div>
-              <div style="color:${dark ? '#8A94A6' : '#64748b'}">${p.routeName}</div>
-              <div style="margin-top:4px">${status}</div>
-              <div style="color:${dark ? '#8A94A6' : '#64748b'}">dziś: ${formatNumber(Number(p.kmToday))} km</div>
-            </div>`,
-          )
-          .addTo(map)
-      })
-      map.on('mouseenter', 'trucks-layer', () => (map.getCanvas().style.cursor = 'pointer'))
-      map.on('mouseleave', 'trucks-layer', () => (map.getCanvas().style.cursor = ''))
+      if (interactive) {
+        map.on('click', 'trucks-layer', (e) => {
+          const f = e.features?.[0]
+          if (!f) return
+          const id = String((f.properties as Record<string, unknown>).id)
+          const [lng, lat] = (f.geometry as GeoJSON.Point).coordinates as [number, number]
+          revealRoute(id, lng, lat)
+          onSelectRef.current?.(id)
+        })
+        map.on('click', (e) => {
+          if (!map.queryRenderedFeatures(e.point, { layers: ['trucks-layer'] }).length) clearSel()
+        })
+        map.on('mouseenter', 'trucks-layer', () => (map.getCanvas().style.cursor = 'pointer'))
+        map.on('mouseleave', 'trucks-layer', () => (map.getCanvas().style.cursor = ''))
+      }
 
       engine = createSimEngine(getTrucks, setData)
       engine.start()
@@ -123,7 +134,6 @@ export function MapView({ getTrucks, fleetKey, interactive = true, theme = 'ligh
       engine?.stop()
       map.remove()
     }
-    // fleetKey/theme пересоздают карту при смене состава флота или темы подложки
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fleetKey, interactive, theme])
 

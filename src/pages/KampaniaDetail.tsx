@@ -1,16 +1,26 @@
-import { useMemo } from 'react'
+import { AnimatePresence } from 'framer-motion'
+import { useMemo, useState } from 'react'
 import { Navigate, useParams } from 'react-router'
+import { TruckDetailSheet } from '../components/TruckDetailSheet'
 import { LazyMapView as MapView } from '../components/map/LazyMapView'
 import { StatusBadge } from '../components/ui/StatusBadge'
 import { TopBar } from '../components/ui/TopBar'
 import { countryNamePl } from '../data/countries'
-import { formatDate, formatMlnRange, formatNumber } from '../i18n/format'
+import { routeById } from '../data/routes'
+import { parseISODate } from '../domain/dates'
+import { estimateCampaign } from '../domain/estimator'
+import type { Truck } from '../domain/types'
+import { formatDate, formatMlnRange, formatNumber, formatPln } from '../i18n/format'
 import { useCountUp } from '../hooks/useCountUp'
 import { useTick } from '../hooks/useTick'
 import { simNow } from '../sim/clock'
 import { campaignReport } from '../sim/report'
+import { kmInInterval } from '../sim/schedule'
+import { truckParams } from '../sim/simulator'
 import { allTrucks, useFleetStore } from '../store/fleet'
 import { useCampaignStore } from '../store/campaign'
+
+const DAY_MS = 24 * 60 * 60 * 1000
 
 function Tile({ value, unit, label, color }: { value: string; unit?: string; label: string; color: string }) {
   return (
@@ -24,10 +34,20 @@ function Tile({ value, unit, label, color }: { value: string; unit?: string; lab
   )
 }
 
+function BudgetRow({ label, value, accent }: { label: string; value: string; accent?: string }) {
+  return (
+    <div className="flex items-center justify-between py-2">
+      <span className="text-[13px] text-ink-muted">{label}</span>
+      <span className={`font-mono text-[15px] font-semibold tabular-nums ${accent ?? 'text-ink'}`}>{value}</span>
+    </div>
+  )
+}
+
 export function KampaniaDetail() {
   const { id } = useParams()
   const campaign = useCampaignStore((s) => s.campaigns.find((c) => c.id === id))
   const userTrucks = useFleetStore((s) => s.userTrucks)
+  const [selected, setSelected] = useState<Truck | null>(null)
   useTick(1000)
 
   const trucks = useMemo(() => allTrucks(userTrucks), [userTrucks])
@@ -37,10 +57,26 @@ export function KampaniaDetail() {
   )
   const getTrucks = useMemo(() => () => campaignTrucks, [campaignTrucks])
 
-  const report = campaign ? campaignReport(campaign, trucks, simNow()) : null
+  const now = simNow()
+  const report = campaign ? campaignReport(campaign, trucks, now) : null
   const km = Math.round(useCountUp(report?.km ?? 0))
 
   if (!campaign || !report) return <Navigate to="/kampanie" replace />
+
+  const est = estimateCampaign(campaign)
+  const total = est.pricePln
+  const spentPln = Math.round(total * report.progress)
+  const perTruckMoney = Math.round(total / Math.max(campaign.trucks, 1))
+  const startMs = parseISODate(campaign.startDate).getTime()
+  const untilMs = Math.min(now, parseISODate(campaign.endDate).getTime() + DAY_MS)
+
+  const perTruck = campaignTrucks
+    .map((t) => {
+      const r = routeById(t.routeId)
+      const tkm = r && untilMs > startMs ? kmInInterval(startMs, untilMs, truckParams(t.id).speedFactor) : 0
+      return { truck: t, route: r?.name ?? '—', km: Math.round(tkm) }
+    })
+    .sort((a, b) => b.km - a.km)
 
   const maxTrucks = Math.max(...report.countryStats.map((s) => s.trucks), 1)
 
@@ -58,10 +94,7 @@ export function KampaniaDetail() {
 
         <div>
           <div className="h-1.5 overflow-hidden rounded-full bg-brand-soft">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-neon to-[#0891b2]"
-              style={{ width: `${report.progress * 100}%` }}
-            />
+            <div className="h-full rounded-full bg-gradient-to-r from-neon to-[#0891b2]" style={{ width: `${report.progress * 100}%` }} />
           </div>
           <p className="mt-2 text-[12.5px] text-ink-muted">
             Postęp kampanii: <b className="text-ink">{Math.round(report.progress * 100)}%</b>
@@ -71,12 +104,24 @@ export function KampaniaDetail() {
         <div className="grid grid-cols-2 gap-2.5">
           <Tile value={formatNumber(campaign.trucks)} label="Naczepy" color="text-live" />
           <Tile value={formatNumber(km)} unit="km" label="Przebieg (dotychczas)" color="text-ink" />
-          <Tile
-            value={formatMlnRange(report.impressionsMin, report.impressionsMax)}
-            label="Wyświetlenia"
-            color="text-neon"
-          />
+          <Tile value={formatMlnRange(report.impressionsMin, report.impressionsMax)} label="Wyświetlenia" color="text-neon" />
           <Tile value={String(report.countries.length)} label="Kraje" color="text-neon" />
+        </div>
+
+        {/* Бюджет: всего / потрачено / осталось (деньги + км) */}
+        <div className="rounded-[20px] border border-line bg-surface p-[18px]">
+          <h2 className="text-[13px] font-semibold text-ink-muted">Budżet i zasięg</h2>
+          <div className="mt-2 divide-y divide-line">
+            <BudgetRow label="Budżet całkowity" value={formatPln(total)} />
+            <BudgetRow label="Wykorzystano" value={formatPln(spentPln)} accent="text-live" />
+            <BudgetRow label="Pozostało" value={formatPln(total - spentPln)} accent="text-neon" />
+          </div>
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-brand-soft">
+            <div className="h-full rounded-full bg-live" style={{ width: `${report.progress * 100}%` }} />
+          </div>
+          <p className="mt-3 font-mono text-[11.5px] text-ink-faint">
+            Przejechano {formatNumber(report.km)} km z {formatNumber(est.totalKm)} km planu
+          </p>
         </div>
 
         {report.countryStats.length > 0 && (
@@ -87,19 +132,41 @@ export function KampaniaDetail() {
                 <div key={s.code} className="flex items-center gap-2.5">
                   <span className="w-[62px] shrink-0 text-[12.5px] text-[#b9c2d0]">{countryNamePl(s.code)}</span>
                   <div className="h-[9px] flex-1 overflow-hidden rounded-[5px] bg-brand-soft">
-                    <div
-                      className="h-full rounded-[5px] bg-neon"
-                      style={{ width: `${(s.trucks / maxTrucks) * 100}%` }}
-                    />
+                    <div className="h-full rounded-[5px] bg-neon" style={{ width: `${(s.trucks / maxTrucks) * 100}%` }} />
                   </div>
-                  <span className="w-5 shrink-0 text-right font-mono text-xs tabular-nums text-ink">
-                    {s.trucks}
-                  </span>
+                  <span className="w-5 shrink-0 text-right font-mono text-xs tabular-nums text-ink">{s.trucks}</span>
                 </div>
               ))}
             </div>
           </div>
         )}
+
+        {/* Разбивка по машинам — тап открывает карточку с рекламой */}
+        <div className="rounded-[20px] border border-line bg-surface p-[18px]">
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-[13px] font-semibold text-ink-muted">Naczepy w kampanii</h2>
+            <span className="font-mono text-[11px] text-ink-faint">{perTruckMoney ? `${formatPln(perTruckMoney)} / szt.` : ''}</span>
+          </div>
+          <div className="no-sb mt-2 max-h-[300px] space-y-1.5 overflow-y-auto">
+            {perTruck.map(({ truck, route, km: tkm }) => (
+              <button
+                key={truck.id}
+                type="button"
+                onClick={() => setSelected(truck)}
+                className="flex w-full items-center gap-3 rounded-xl border border-line bg-surface-2 px-3 py-2.5 text-left transition-colors hover:bg-surface"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block font-mono text-[13px] font-semibold text-ink">{truck.plate}</span>
+                  <span className="block truncate text-[11.5px] text-ink-muted">{route}</span>
+                </span>
+                <span className="shrink-0 text-right">
+                  <span className="block font-mono text-[12.5px] tabular-nums text-ink">{formatNumber(tkm)} km</span>
+                  <span className="block font-mono text-[11px] tabular-nums text-live">{formatPln(perTruckMoney)}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className="overflow-hidden rounded-[20px] border border-line bg-surface">
           <h2 className="px-[18px] pt-4 pb-2 text-[13px] font-semibold text-ink-muted">Naczepy kampanii na żywo</h2>
@@ -107,12 +174,11 @@ export function KampaniaDetail() {
             <MapView getTrucks={getTrucks} fleetKey={campaign.id} interactive={false} theme="dark" />
           </div>
         </div>
-
-        <div className="rounded-[18px] border-[1.5px] border-dashed border-[#2a3448] p-[22px] text-center">
-          <p className="text-sm font-semibold text-ink-muted">Kreacja reklamowa</p>
-          <p className="mt-1 text-[12.5px] text-ink-faint">Wgrywanie plików — wkrótce</p>
-        </div>
       </div>
+
+      <AnimatePresence>
+        {selected && <TruckDetailSheet truck={selected} onClose={() => setSelected(null)} />}
+      </AnimatePresence>
     </div>
   )
 }

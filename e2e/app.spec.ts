@@ -2,9 +2,9 @@ import { expect, test } from '@playwright/test'
 
 test('happy path: kreator przelicza koszt i tworzy kampanię, która przeżywa reload', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByRole('heading', { name: /Twoja reklama jedzie/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'AdTruck' })).toBeVisible()
 
-  await page.getByRole('link', { name: 'Zamów kampanię' }).click()
+  await page.getByRole('link', { name: /Rozpocznij demo/ }).click()
   await expect(page).toHaveURL(/\/zamow$/)
 
   // 100 naczep → koszt 100 × 3000 × 3 mies. = 900 000 zł (live-пересчёт)
