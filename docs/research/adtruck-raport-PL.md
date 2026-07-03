@@ -33,18 +33,24 @@ _Reklama na naczepach TIR + mapa Europy na żywo. Rynek: Polska. Status: interak
 
 ---
 
-## 3. Wycena do produkcji (firma rodzinna, „budujemy z AI")
-| Scenariusz | Koszt jednorazowo | Miesięcznie | Czas |
+## 3. Wycena etapami (orientacyjnie, dla obecnego zakresu)
+
+> ⚠️ **Wycena jest orientacyjna** i dotyczy **obecnego** zakresu wymagań (to, co jest już na ad-truck.vercel.app + plan MVP z rozdziału 5). Podzielone na etapy — dla przejrzystości wobec zamawiającego.
+
+| Etap | Zakres | Czas | Wycena\* |
 |---|---|---|---|
-| **Ty + AI (maks. DIY)** | **$1,5–5 tys.** | $60–250 | 2–4 mies. w części etatu |
-| + punktowy freelancer (płatności, RODO, backend, publikacja) | +$3–10 tys. | — | 2–3 mies. |
-| Mały software house pod klucz (stawki EE/PL $25–50/h) | $30–70 tys. | — | 3–6 mies. |
+| **POC** ✅ | Interaktywny prototyp: mapa Europy na żywo, kreator zamówienia, raporty, role, funkcje-killer (heatmapa zasięgu, ETA, puls kampanii, karta pojazdu z reklamą na burcie) | wykonane, ~2–3 tyg. | ~$1,5–3 tys. (gotowe) |
+| **MVP** | Expo (iOS/Android/web) + Supabase; auth + role + multi-tenant; zamówienie wg kraju/naczepy; kalkulator; **aplikacja kierowcy (realny GPS)**; mini-panel admina | 6–10 tyg. | **$6–15 tys.** |
+| **Prod** | Płatności + VAT/faktury; workflow druku/montażu + okna dostępności naczep; raporty/atrybucja; heatmapa wg ruchu (TomTom); monitoring/backupy; RODO; audyt bezpieczeństwa; publikacja w App Store/Play | 4–8 tyg. | **$6–14 tys.** |
+| **Wsparcie** (po starcie) | Poprawki błędów, aktualizacje, monitoring, drobne zmiany | miesięcznie | **$300–800/mies.** + infra $60–250/mies. |
 
-_Agencja zachodnia: $120–300 tys.+. „Miliony" dotyczą platform wielorynkowych — nie nasz przypadek._
+\* Dla modelu „solo-deweloper + AI", stawki EE/PL, orientacyjnie. Software house pod klucz to $30–70 tys.+, agencja zachodnia $120–300 tys.+ („miliony" dotyczą platform wielorynkowych — nie nasz przypadek).
 
-**Stack:** **Expo (React Native)** → iOS + Android + web z jednej bazy kodu (przenosimy gotową logikę: symulator, kalkulator, mapę, design).
-**Infrastruktura:** managed (zalecam) — Supabase/Neon + Vercel + Expo EAS ≈ **$25–60/mies.**; AWS (opcja) — Fargate/Lightsail + RDS + S3 + CloudFront + Cognito ≈ **$60–200/mies.**
-**Subskrypcje mies.:** Apple $99/rok, Google $25 jednorazowo, domena ~$15/rok, mapy/ruch $0–50, GPS $0–20, email/SMS $5–30, płatności — prowizja ~1,5–2,9%.
+**Stack:** Expo (RN) → iOS + Android + web z jednej bazy kodu, wykorzystujemy gotową logikę.
+**Infra/konta (gotówka):** Apple $99/rok, Google $25 jednorazowo, domena ~$15/rok; hosting managed (Supabase+Vercel+EAS) ~$25–60/mies. lub AWS ~$60–200/mies.; mapy/ruch $0–50; GPS $0–20; email/SMS $5–30; płatności — prowizja ~1,5–2,9%.
+
+### O zakresie — szczerze (ważne do ustalenia z zamawiającym)
+Powyższe kwoty dotyczą **obecnych, konkretnych** wymagań. Jeśli po drodze pojawią się nowe życzenia, których teraz nie ma na liście („a chciałoby się jeszcze to i tamto") — to normalne i częste, ale jest to już **dodatkowy zakres**: policzymy i ustalimy osobno, żeby terminy i cena pozostały uczciwe dla obu stron. Nad w nieskończoność rosnącym, rozmytym zakresem „za tę samą cenę" nie da się pracować nikomu. Dlatego idziemy **etapami**: ustalony zakres etapu → wykonane → odebrane → dalej.
 
 ---
 
