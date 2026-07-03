@@ -1,6 +1,9 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type maplibregl from 'maplibre-gl'
+import { LiveToasts } from '../components/LiveToasts'
+import { ShareLiveModal } from '../components/ShareLiveModal'
+import { liveUrl } from '../lib/liveUrl'
 import { TruckDetailSheet } from '../components/TruckDetailSheet'
 import { LazyMapView as MapView } from '../components/map/LazyMapView'
 import { SpeedControl } from '../components/map/SpeedControl'
@@ -26,6 +29,7 @@ export function Mapa() {
   const [picked, setPicked] = useState<Truck | null>(null)
   const [sheet, setSheet] = useState<Truck | null>(null)
   const [tourOn, setTourOn] = useState(false)
+  const [share, setShare] = useState(false)
   const [caption, setCaption] = useState<string | null>(null)
   const mapInst = useRef<maplibregl.Map | null>(null)
   const abortTour = useRef(false)
@@ -136,6 +140,19 @@ export function Mapa() {
             )}
             {tourOn ? 'Stop' : 'Prezentacja'}
           </button>
+          <button
+            type="button"
+            onClick={() => setShare(true)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-neon/40 bg-neon/10 px-3 py-1.5 text-xs font-semibold text-neon backdrop-blur-md transition-colors hover:bg-neon/20"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="size-3.5">
+              <rect x="3" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="3" width="7" height="7" rx="1" />
+              <rect x="3" y="14" width="7" height="7" rx="1" />
+              <path d="M14 14h3v3M21 14v7M14 21h7" />
+            </svg>
+            Udostępnij
+          </button>
           {!tourOn && (
             <div className="rounded-2xl border border-line bg-surface/70 px-[15px] py-3 backdrop-blur-md">
               <div className="flex items-baseline gap-1.5">
@@ -192,8 +209,18 @@ export function Mapa() {
         </div>
       )}
 
+      <LiveToasts trucks={trucks} enabled={!tourOn} />
+
       <AnimatePresence>
         {sheet && <TruckDetailSheet truck={sheet} onClose={() => setSheet(null)} />}
+        {share && (
+          <ShareLiveModal
+            url={liveUrl('/mapa')}
+            title="Mapa na żywo"
+            subtitle="Cała flota w czasie rzeczywistym — na Twoim telefonie"
+            onClose={() => setShare(false)}
+          />
+        )}
       </AnimatePresence>
     </div>
   )

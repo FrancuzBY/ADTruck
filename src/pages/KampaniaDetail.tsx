@@ -1,6 +1,8 @@
 import { AnimatePresence } from 'framer-motion'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useParams } from 'react-router'
+import { ShareLiveModal } from '../components/ShareLiveModal'
+import { liveUrl } from '../lib/liveUrl'
 import { TruckDetailSheet } from '../components/TruckDetailSheet'
 import { LazyMapView as MapView } from '../components/map/LazyMapView'
 import { StatusBadge } from '../components/ui/StatusBadge'
@@ -51,6 +53,7 @@ export function KampaniaDetail() {
   const campaign = useCampaignStore((s) => s.campaigns.find((c) => c.id === id))
   const userTrucks = useFleetStore((s) => s.userTrucks)
   const [selected, setSelected] = useState<Truck | null>(null)
+  const [share, setShare] = useState(false)
   const [showHeat, setShowHeat] = useState(false)
   const [scrub, setScrub] = useState<number | null>(null)
   const playRef = useRef<number | null>(null)
@@ -132,7 +135,22 @@ export function KampaniaDetail() {
           <span className="font-mono text-[13px] text-ink-muted">
             {formatDate(campaign.startDate)} – {formatDate(campaign.endDate)}
           </span>
-          <StatusBadge status={report.status} dark />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShare(true)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-neon/40 bg-neon/10 px-3 py-1.5 text-[12px] font-semibold text-neon transition-colors hover:bg-neon/20"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="size-3.5">
+                <rect x="3" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="3" width="7" height="7" rx="1" />
+                <rect x="3" y="14" width="7" height="7" rx="1" />
+                <path d="M14 14h3v3M21 14v7M14 21h7" />
+              </svg>
+              Na żywo
+            </button>
+            <StatusBadge status={report.status} dark />
+          </div>
         </div>
 
         <div>
@@ -327,6 +345,14 @@ export function KampaniaDetail() {
 
       <AnimatePresence>
         {selected && <TruckDetailSheet truck={selected} onClose={() => setSelected(null)} />}
+        {share && (
+          <ShareLiveModal
+            url={liveUrl(`/kampanie/${campaign.id}`)}
+            title="Raport na żywo"
+            subtitle={`${campaign.trucks} naczep · zasięg ${formatMlnRange(report.impressionsMin, report.impressionsMax)}`}
+            onClose={() => setShare(false)}
+          />
+        )}
       </AnimatePresence>
     </div>
   )
