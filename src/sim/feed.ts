@@ -1,4 +1,4 @@
-import { countryNamePl } from '../data/countries'
+import { countryGenitivePl } from '../data/countries'
 import { routeById } from '../data/routes'
 import type { Truck } from '../domain/types'
 import { formatMln } from '../i18n/format'
@@ -37,7 +37,7 @@ export function campaignFeed(trucks: Truck[], impressions: number, nowMs: number
       const idx = Math.min(Math.floor(pos), n - 1)
       const into = pos - idx
       if (idx > 0 && into < 0.1) {
-        ev.push({ id: `ctry-${t.id}`, kind: 'country', text: `${t.plate} wjechała do ${countryNamePl(route.countries[idx])}`, sub: 'nowy kraj', order: 3 + into * 40 })
+        ev.push({ id: `ctry-${t.id}`, kind: 'country', text: `${t.plate} wjechała do ${countryGenitivePl(route.countries[idx])}`, sub: 'nowy kraj', order: 3 + into * 40 })
       }
     }
   }
