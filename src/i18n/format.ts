@@ -32,6 +32,17 @@ export function formatMlnRange(min: number, max: number): string {
   return `${plOneDecimal.format(min / 1_000_000)}–${plOneDecimal.format(max / 1_000_000)} mln`
 }
 
+/** ETA: 0/малое → «wkrótce»; <60 мин → «za ~35 min»; иначе «za ~2 h 40 min». */
+export function formatEta(ms: number | null): string {
+  if (ms === null) return '—'
+  const min = Math.round(ms / 60_000)
+  if (min <= 1) return 'wkrótce'
+  if (min < 60) return `za ~${min} min`
+  const h = Math.floor(min / 60)
+  const m = min % 60
+  return m ? `za ~${h} h ${m} min` : `za ~${h} h`
+}
+
 const plDate = new Intl.DateTimeFormat('pl-PL', { day: 'numeric', month: 'short', year: 'numeric' })
 
 /** '2026-05-01' → «1 maj 2026». Вход — ISO YYYY-MM-DD (парсится в UTC). */

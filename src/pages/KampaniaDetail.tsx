@@ -10,13 +10,16 @@ import { routeById } from '../data/routes'
 import { parseISODate } from '../domain/dates'
 import { estimateCampaign } from '../domain/estimator'
 import type { Truck } from '../domain/types'
-import { formatDate, formatMlnRange, formatNumber, formatPln } from '../i18n/format'
+import { formatDate, formatEta, formatMlnRange, formatNumber, formatPln } from '../i18n/format'
 import { useCountUp } from '../hooks/useCountUp'
 import { useTick } from '../hooks/useTick'
 import { simNow } from '../sim/clock'
+import { campaignFeed } from '../sim/feed'
+import { cityHeatFeatures } from '../sim/reach'
 import { campaignReport } from '../sim/report'
 import { kmInInterval } from '../sim/schedule'
 import { truckParams } from '../sim/simulator'
+import { nextStop } from '../sim/stops'
 import { allTrucks, useFleetStore } from '../store/fleet'
 import { useCampaignStore } from '../store/campaign'
 
@@ -48,6 +51,7 @@ export function KampaniaDetail() {
   const campaign = useCampaignStore((s) => s.campaigns.find((c) => c.id === id))
   const userTrucks = useFleetStore((s) => s.userTrucks)
   const [selected, setSelected] = useState<Truck | null>(null)
+  const [showHeat, setShowHeat] = useState(false)
   useTick(1000)
 
   const trucks = useMemo(() => allTrucks(userTrucks), [userTrucks])
@@ -56,10 +60,12 @@ export function KampaniaDetail() {
     [campaign, trucks],
   )
   const getTrucks = useMemo(() => () => campaignTrucks, [campaignTrucks])
+  const heatmap = useMemo(() => cityHeatFeatures(campaignTrucks), [campaignTrucks])
 
   const now = simNow()
   const report = campaign ? campaignReport(campaign, trucks, now) : null
   const km = Math.round(useCountUp(report?.km ?? 0))
+  const imp = Math.round(useCountUp(report?.impressions ?? 0))
 
   if (!campaign || !report) return <Navigate to="/kampanie" replace />
 
@@ -74,10 +80,12 @@ export function KampaniaDetail() {
     .map((t) => {
       const r = routeById(t.routeId)
       const tkm = r && untilMs > startMs ? kmInInterval(startMs, untilMs, truckParams(t.id).speedFactor) : 0
-      return { truck: t, route: r?.name ?? '—', km: Math.round(tkm) }
+      const ns = r ? nextStop(now, t, r) : null
+      return { truck: t, route: r?.name ?? '—', km: Math.round(tkm), next: ns?.city, eta: ns?.etaMs ?? null }
     })
     .sort((a, b) => b.km - a.km)
 
+  const feed = campaignFeed(campaignTrucks, report.impressions, now)
   const maxTrucks = Math.max(...report.countryStats.map((s) => s.trucks), 1)
 
   return (
@@ -99,6 +107,29 @@ export function KampaniaDetail() {
           <p className="mt-2 text-[12.5px] text-ink-muted">
             Postęp kampanii: <b className="text-ink">{Math.round(report.progress * 100)}%</b>
           </p>
+        </div>
+
+        {/* Puls kampanii: показы в реальном времени + живая лента */}
+        <div className="rounded-[20px] border border-line bg-surface p-[18px]">
+          <div className="flex items-center gap-2">
+            <span className="size-2 animate-[softpulse_1.6s_ease-in-out_infinite] rounded-full bg-live shadow-[0_0_10px_var(--color-live)]" />
+            <span className="text-[12px] font-semibold tracking-wide text-ink-muted uppercase">Wyświetlenia na żywo</span>
+          </div>
+          <div className="mt-1.5 flex items-baseline gap-2">
+            <span className="font-mono text-[34px] font-bold tabular-nums text-live">{formatNumber(imp)}</span>
+            <span className="font-mono text-[12px] text-ink-faint">{formatMlnRange(report.impressionsMin, report.impressionsMax)}</span>
+          </div>
+          {feed.length > 0 && (
+            <div className="mt-3 space-y-1.5 border-t border-line pt-3">
+              {feed.map((e) => (
+                <div key={e.id} className="flex items-center gap-2.5">
+                  <span className={`size-1.5 shrink-0 rounded-full ${e.kind === 'milestone' ? 'bg-live' : e.kind === 'country' ? 'bg-warn' : 'bg-neon'}`} />
+                  <span className="min-w-0 flex-1 truncate text-[12.5px] text-ink">{e.text}</span>
+                  <span className="shrink-0 font-mono text-[10.5px] text-ink-faint">{e.sub}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-2.5">
@@ -148,7 +179,7 @@ export function KampaniaDetail() {
             <span className="font-mono text-[11px] text-ink-faint">{perTruckMoney ? `${formatPln(perTruckMoney)} / szt.` : ''}</span>
           </div>
           <div className="no-sb mt-2 max-h-[300px] space-y-1.5 overflow-y-auto">
-            {perTruck.map(({ truck, route, km: tkm }) => (
+            {perTruck.map(({ truck, route, km: tkm, next, eta }) => (
               <button
                 key={truck.id}
                 type="button"
@@ -158,6 +189,7 @@ export function KampaniaDetail() {
                 <span className="min-w-0 flex-1">
                   <span className="block font-mono text-[13px] font-semibold text-ink">{truck.plate}</span>
                   <span className="block truncate text-[11.5px] text-ink-muted">{route}</span>
+                  {next && <span className="block truncate text-[10.5px] text-neon">→ {next} · {formatEta(eta)}</span>}
                 </span>
                 <span className="shrink-0 text-right">
                   <span className="block font-mono text-[12.5px] tabular-nums text-ink">{formatNumber(tkm)} km</span>
@@ -169,9 +201,18 @@ export function KampaniaDetail() {
         </div>
 
         <div className="overflow-hidden rounded-[20px] border border-line bg-surface">
-          <h2 className="px-[18px] pt-4 pb-2 text-[13px] font-semibold text-ink-muted">Naczepy kampanii na żywo</h2>
+          <div className="flex items-center justify-between px-[18px] pt-4 pb-2">
+            <h2 className="text-[13px] font-semibold text-ink-muted">Naczepy kampanii na żywo</h2>
+            <button
+              type="button"
+              onClick={() => setShowHeat((v) => !v)}
+              className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${showHeat ? 'border-warn/50 bg-warn/15 text-warn' : 'border-line text-ink-muted'}`}
+            >
+              Zasięg
+            </button>
+          </div>
           <div className="h-[172px] w-full">
-            <MapView getTrucks={getTrucks} fleetKey={campaign.id} interactive={false} theme="dark" />
+            <MapView getTrucks={getTrucks} fleetKey={campaign.id} interactive={false} theme="dark" heatmap={heatmap} showHeatmap={showHeat} />
           </div>
         </div>
       </div>

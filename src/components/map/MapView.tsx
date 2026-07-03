@@ -10,6 +10,7 @@ import { ARROW_COLORS, EUROPE_BOUNDS, IS_E2E, makeArrowIcon, mapStyle, type MapT
 
 const SOURCE_ID = 'trucks'
 const SEL_ID = 'sel'
+const HEAT_ID = 'heat'
 const ARROW_DRIVING = 'truck-arrow'
 const ARROW_PARKED = 'truck-arrow-parked'
 const EMPTY_FC: TruckFeatureCollection = { type: 'FeatureCollection', features: [] }
@@ -26,15 +27,24 @@ export interface MapViewProps {
   fleetKey?: string | number
   interactive?: boolean
   theme?: MapTheme
-  /** Клик по фуре: подсвечивается её маршрут (пройдено/осталось) и вызывается колбэк с id. */
+  /** Клик по фуре: подсветка маршрута (пройдено/осталось) + колбэк с id. */
   onSelectTruck?: (id: string) => void
+  /** Точки городов с весом 0..1 для тепловой карты охвата. */
+  heatmap?: GeoJSON.FeatureCollection
+  /** Показывать тепловую карту. */
+  showHeatmap?: boolean
 }
 
-/** Full-bleed карта Европы: symbol-слой флота + подсветка выбранного маршрута. */
-export function MapView({ getTrucks, fleetKey, interactive = true, theme = 'dark', onSelectTruck }: MapViewProps) {
+/** Full-bleed карта Европы: symbol-слой флота + heatmap охвата + подсветка выбранного маршрута. */
+export function MapView({ getTrucks, fleetKey, interactive = true, theme = 'dark', onSelectTruck, heatmap, showHeatmap }: MapViewProps) {
   const container = useRef<HTMLDivElement>(null)
+  const mapRef = useRef<maplibregl.Map | null>(null)
   const onSelectRef = useRef(onSelectTruck)
+  const heatRef = useRef(heatmap)
+  const showHeatRef = useRef(showHeatmap)
   onSelectRef.current = onSelectTruck
+  heatRef.current = heatmap
+  showHeatRef.current = showHeatmap
 
   useEffect(() => {
     if (!container.current) return
@@ -47,6 +57,7 @@ export function MapView({ getTrucks, fleetKey, interactive = true, theme = 'dark
       attributionControl: { compact: true },
       interactive,
     })
+    mapRef.current = map
     if (interactive) map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
 
     let engine: ReturnType<typeof createSimEngine> | null = null
@@ -55,7 +66,6 @@ export function MapView({ getTrucks, fleetKey, interactive = true, theme = 'dark
       ;(map.getSource(SOURCE_ID) as maplibregl.GeoJSONSource | undefined)?.setData(fc)
       if (IS_E2E) window.__adtruckDebug = { count: fc.features.length, features: fc.features }
     }
-
     const clearSel = () =>
       (map.getSource(SEL_ID) as maplibregl.GeoJSONSource | undefined)?.setData(EMPTY_GEO)
 
@@ -94,7 +104,28 @@ export function MapView({ getTrucks, fleetKey, interactive = true, theme = 'dark
         map.addImage(ARROW_PARKED, makeArrowIcon(36, arrow.parked).getContext('2d')!.getImageData(0, 0, 36, 36))
       }
 
-      // Слой подсветки маршрута — под фурами.
+      // Тепловая карта охвата — самый нижний слой.
+      map.addSource(HEAT_ID, { type: 'geojson', data: heatRef.current ?? EMPTY_GEO })
+      map.addLayer({
+        id: HEAT_ID,
+        type: 'heatmap',
+        source: HEAT_ID,
+        layout: { visibility: showHeatRef.current ? 'visible' : 'none' },
+        paint: {
+          'heatmap-weight': ['interpolate', ['linear'], ['get', 'weight'], 0, 0, 1, 1],
+          'heatmap-intensity': ['interpolate', ['linear'], ['zoom'], 3, 0.7, 7, 1.5],
+          'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 3, 20, 7, 46],
+          'heatmap-opacity': 0.8,
+          'heatmap-color': ['interpolate', ['linear'], ['heatmap-density'],
+            0, 'rgba(0,0,0,0)',
+            0.2, 'rgba(34,211,238,0.35)',
+            0.45, 'rgba(34,211,238,0.7)',
+            0.7, 'rgba(163,230,53,0.8)',
+            1, 'rgba(245,158,11,0.9)'],
+        },
+      })
+
+      // Подсветка выбранного маршрута — над heatmap, под фурами.
       map.addSource(SEL_ID, { type: 'geojson', data: EMPTY_GEO })
       map.addLayer({ id: 'sel-rem', type: 'line', source: SEL_ID, filter: ['==', ['get', 'seg'], 'rem'], layout: { 'line-cap': 'round' }, paint: { 'line-color': '#22d3ee', 'line-width': 2.5, 'line-dasharray': [1.5, 1.5], 'line-opacity': 0.85 } })
       map.addLayer({ id: 'sel-trav', type: 'line', source: SEL_ID, filter: ['==', ['get', 'seg'], 'trav'], layout: { 'line-cap': 'round' }, paint: { 'line-color': '#a3e635', 'line-width': 3.5, 'line-opacity': 0.95 } })
@@ -132,10 +163,25 @@ export function MapView({ getTrucks, fleetKey, interactive = true, theme = 'dark
 
     return () => {
       engine?.stop()
+      mapRef.current = null
       map.remove()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fleetKey, interactive, theme])
+
+  // Живое обновление данных heatmap без пересоздания карты.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !map.isStyleLoaded() || !map.getSource(HEAT_ID)) return
+    ;(map.getSource(HEAT_ID) as maplibregl.GeoJSONSource).setData(heatmap ?? EMPTY_GEO)
+  }, [heatmap])
+
+  // Тумблер видимости heatmap.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !map.isStyleLoaded() || !map.getLayer(HEAT_ID)) return
+    map.setLayoutProperty(HEAT_ID, 'visibility', showHeatmap ? 'visible' : 'none')
+  }, [showHeatmap])
 
   return <div ref={container} className="size-full" data-testid="map" />
 }

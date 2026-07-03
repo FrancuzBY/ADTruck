@@ -4,12 +4,12 @@ import { creativeById, CREATIVES, truckProfile } from '../data/vehicles'
 import { routeById } from '../data/routes'
 import { PRICE_PER_TRUCK_MONTH_PLN } from '../domain/constants'
 import type { Truck } from '../domain/types'
-import { formatNumber, formatPln } from '../i18n/format'
+import { formatEta, formatNumber, formatPln } from '../i18n/format'
 import { useTick } from '../hooks/useTick'
 import { simNow } from '../sim/clock'
 import { CARRIERS } from '../sim/fleet'
-import { odometerKm } from '../sim/schedule'
-import { pingPongDistance, routeGeometry, truckParams, truckStateAt } from '../sim/simulator'
+import { truckStateAt } from '../sim/simulator'
+import { nextStop, truckDistanceAlong } from '../sim/stops'
 import { creativeIdFor, useFleetStore } from '../store/fleet'
 import { FlagIcon } from './ui/FlagIcon'
 import { TruckArt } from './TruckArt'
@@ -36,20 +36,16 @@ export function TruckDetailSheet({ truck, onClose }: { truck: Truck; onClose: ()
   const now = simNow()
   const state = route ? truckStateAt(now, truck, route) : null
 
-  // Позиция вдоль коридора и направление.
+  // Позиция вдоль коридора, направление и следующий город + ETA.
+  const da = route ? truckDistanceAlong(now, truck, route) : null
   let progress = 0
   let origin = route?.from ?? ''
   let dest = route?.to ?? ''
-  if (route) {
-    const geo = routeGeometry(route)
-    const p = truckParams(truck.id)
-    const odo = odometerKm(now, p.speedFactor) + p.phase01 * 2 * geo.totalKm
-    const withDir = p.direction === 1 ? odo + geo.totalKm : odo
-    const { d, forward } = pingPongDistance(withDir, geo.totalKm)
-    const frac = geo.totalKm ? d / geo.totalKm : 0
-    progress = forward ? frac : 1 - frac
-    if (!forward) [origin, dest] = [dest, origin]
+  if (route && da) {
+    progress = da.forward ? da.frac : 1 - da.frac
+    if (!da.forward) [origin, dest] = [dest, origin]
   }
+  const ns = route ? nextStop(now, truck, route) : null
 
   // График: накопленный пробег за сегодня (последние ~4 ч).
   const spark: number[] = []
@@ -121,7 +117,14 @@ export function TruckDetailSheet({ truck, onClose }: { truck: Truck; onClose: ()
                 style={{ left: `${progress * 100}%` }}
               />
             </div>
-            <div className="mt-2 font-mono text-[11px] text-ink-faint">Trasa pokonana: {Math.round(progress * 100)}%</div>
+            <div className="mt-2 flex items-center justify-between">
+              <span className="font-mono text-[11px] text-ink-faint">Trasa pokonana: {Math.round(progress * 100)}%</span>
+              {ns && (
+                <span className="text-[11.5px] text-ink-muted">
+                  → <span className="font-medium text-ink">{ns.city}</span> · <span className="text-live">{formatEta(ns.etaMs)}</span>
+                </span>
+              )}
+            </div>
           </div>
         )}
 
