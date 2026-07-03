@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { createPortal } from 'react-dom'
 import { creativeById, CREATIVES, truckProfile } from '../data/vehicles'
 import { routeById } from '../data/routes'
 import { PRICE_PER_TRUCK_MONTH_PLN } from '../domain/constants'
@@ -60,15 +61,14 @@ export function TruckDetailSheet({ truck, onClose }: { truck: Truck; onClose: ()
 
   const driving = !!state?.isDriving
 
-  return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+  return createPortal(
+    <div className="fixed inset-0 z-[80] flex items-end justify-center">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <motion.div
         initial={{ y: '100%' }}
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-        onClick={(e) => e.stopPropagation()}
         className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-[26px] border-t border-line bg-surface px-5 pt-3 pb-8"
       >
         <div className="mx-auto mb-4 h-[5px] w-10 rounded-full bg-line" />
@@ -164,6 +164,7 @@ export function TruckDetailSheet({ truck, onClose }: { truck: Truck; onClose: ()
           </div>
         </div>
       </motion.div>
-    </div>
+    </div>,
+    document.body,
   )
 }

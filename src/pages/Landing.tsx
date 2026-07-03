@@ -25,7 +25,7 @@ const C = {
 type Node = { x: number; y: number; label?: string }
 const NODES = C as Record<string, Node>
 
-// Лучи-маршруты + длительность бегущей точки.
+// Лучи-маршруты + базовая длительность (умножается для «медленно и плавно»).
 const ROUTES: [keyof typeof C, keyof typeof C, number][] = [
   ['warszawa', 'gdansk', 6.5],
   ['warszawa', 'berlin', 7.5],
@@ -38,6 +38,9 @@ const ROUTES: [keyof typeof C, keyof typeof C, number][] = [
   ['warszawa', 'praga', 7.2],
 ]
 
+// Замедление анимации — спокойное, ненавязчивое движение.
+const SLOW = 3.6
+
 const routePath = (a: Node, b: Node) => `M${a.x} ${a.y}L${b.x} ${b.y}`
 
 export function Landing() {
@@ -45,8 +48,7 @@ export function Landing() {
   const count = useMemo(() => allTrucks(userTrucks).length, [userTrucks])
 
   return (
-    <div className="relative flex min-h-dvh flex-col overflow-hidden bg-[radial-gradient(130%_80%_at_50%_-6%,#16274a_0%,#0b1019_46%,#06090f_100%)] px-7 pt-16 pb-28">
-      {/* Анимированная карта-фон: светящиеся лучи + бегущие точки */}
+    <div className="relative flex min-h-dvh flex-col justify-center overflow-hidden bg-[radial-gradient(130%_80%_at_50%_-6%,#16274a_0%,#0b1019_46%,#06090f_100%)] px-7 pt-14 pb-24">
       <svg
         aria-hidden
         viewBox="0 0 390 520"
@@ -56,7 +58,7 @@ export function Landing() {
         {ROUTES.map(([a, b], i) => (
           <path key={`glow${i}`} id={`beam${i}`} d={routePath(NODES[a], NODES[b])} fill="none" stroke="#22d3ee" strokeWidth="3" strokeLinecap="round" opacity="0.1" />
         ))}
-        {ROUTES.map(([a, b], i) => (
+        {ROUTES.map(([a, b, dur], i) => (
           <path
             key={`flow${i}`}
             d={routePath(NODES[a], NODES[b])}
@@ -65,26 +67,24 @@ export function Landing() {
             strokeWidth="1.3"
             strokeLinecap="round"
             strokeDasharray="1 13"
-            opacity="0.75"
-            style={{ animation: `beamflow ${ROUTES[i][2] * 1.4}s linear infinite` }}
+            opacity="0.7"
+            style={{ animation: `beamflow ${dur * SLOW}s linear infinite` }}
           />
         ))}
-        {/* Бегущие точки-фуры вдоль лучей */}
         {ROUTES.map(([, , dur], i) => (
           <g key={`dot${i}`}>
             <circle r="5" fill="#a3e635" opacity="0.22">
-              <animateMotion dur={`${dur}s`} repeatCount="indefinite" begin={`${i * 0.7}s`}>
+              <animateMotion dur={`${dur * SLOW}s`} repeatCount="indefinite" begin={`${i * 1.1}s`}>
                 <mpath xlinkHref={`#beam${i}`} />
               </animateMotion>
             </circle>
             <circle r="2.4" fill="#a3e635">
-              <animateMotion dur={`${dur}s`} repeatCount="indefinite" begin={`${i * 0.7}s`}>
+              <animateMotion dur={`${dur * SLOW}s`} repeatCount="indefinite" begin={`${i * 1.1}s`}>
                 <mpath xlinkHref={`#beam${i}`} />
               </animateMotion>
             </circle>
           </g>
         ))}
-        {/* Узлы-города */}
         {Object.values(NODES).map((n, i) => (
           <g key={`node${i}`}>
             <circle cx={n.x} cy={n.y} r="5.5" fill="#22d3ee" opacity="0.18" />
@@ -97,15 +97,9 @@ export function Landing() {
           </g>
         ))}
       </svg>
-      {/* затемнение сверху/снизу для читаемости текста */}
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,#0a0e16_2%,rgba(10,14,22,0)_26%,rgba(6,9,15,0)_60%,#06090f_98%)]" />
 
-      <motion.div
-        className="relative z-10 flex flex-1 flex-col"
-        initial="i"
-        animate="a"
-        transition={{ staggerChildren: 0.08 }}
-      >
+      <motion.div className="relative z-10 flex flex-col" initial="i" animate="a" transition={{ staggerChildren: 0.08 }}>
         <motion.div variants={{ i: { opacity: 0, y: 10 }, a: { opacity: 1, y: 0 } }} className="flex items-center gap-2.5">
           <span className="size-[7px] rounded-full bg-live shadow-[0_0_12px_var(--color-live)]" />
           <span className="font-mono text-[11.5px] tracking-[0.18em] text-live uppercase">Pitch · 2026</span>
@@ -124,7 +118,7 @@ export function Landing() {
           {pl.tagline}
         </motion.p>
 
-        <div className="flex-1 min-h-[130px]" />
+        <div className="h-[clamp(56px,18vh,190px)]" />
 
         <motion.div
           variants={{ i: { opacity: 0, y: 12 }, a: { opacity: 1, y: 0 } }}
@@ -148,10 +142,7 @@ export function Landing() {
             </svg>
           </Link>
         </motion.div>
-        <motion.p
-          variants={{ i: { opacity: 0, y: 12 }, a: { opacity: 1, y: 0 } }}
-          className="mt-4 text-center text-[11.5px] text-ink-faint"
-        >
+        <motion.p variants={{ i: { opacity: 0, y: 12 }, a: { opacity: 1, y: 0 } }} className="mt-4 text-center text-[11.5px] text-ink-faint">
           Mobilna platforma reklamy na naczepach TIR
         </motion.p>
       </motion.div>
